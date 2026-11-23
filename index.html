@@ -1,0 +1,2095 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Library Spentigs - Perpustakaan Digital SMPN 39 Surabaya</title>
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <!-- Chart.js untuk Grafik Dashboard Admin -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <!-- JsBarcode untuk Membuat Barcode Buku & Kartu Siswa -->
+  <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js"></script>
+  <!-- Html5-QRCode untuk Scan Barcode Kamera -->
+  <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
+  <!-- Google Fonts: Plus Jakarta Sans -->
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <!-- SheetJS (Export & Import Excel) -->
+  <script src="https://cdn.sheetjs.com/xlsx-0.20.2/package/dist/xlsx.full.min.js"></script>
+  <!-- jsPDF & AutoTable (Export PDF) -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
+
+  <style>
+    body {
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      background-color: #f8fafc;
+      color: #0f172a;
+    }
+    .glass-nav {
+      background: rgba(255, 255, 255, 0.94);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid rgba(226, 232, 240, 0.9);
+    }
+    .book-card {
+      transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    .book-card:hover {
+      transform: translateY(-4px);
+      box-shadow: 0 12px 24px -8px rgba(15, 23, 42, 0.12);
+    }
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: #f1f5f9; }
+    ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
+    ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+  </style>
+</head>
+<body class="min-h-screen flex flex-col">
+
+  <!-- Toast Notification Container -->
+  <div id="toast-container" class="fixed bottom-24 right-5 z-50 flex flex-col gap-2"></div>
+
+  <!-- Navbar -->
+  <header class="glass-nav sticky top-0 z-40">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-3">
+      <div class="flex items-center gap-3 cursor-pointer" onclick="switchTab('katalog')">
+        <div class="w-10 h-10 rounded-xl bg-indigo-600 text-white flex items-center justify-center shadow-md shadow-indigo-200">
+          <i data-lucide="book-open" class="w-5 h-5"></i>
+        </div>
+        <div>
+          <h1 class="font-bold text-lg tracking-tight text-slate-900 leading-none">Library <span class="text-indigo-600">Spentigs</span></h1>
+          <p class="text-[11px] font-medium text-slate-500 mt-0.5">SMP Negeri 39 Surabaya</p>
+        </div>
+      </div>
+
+      <nav class="flex items-center gap-1.5 sm:gap-2">
+        <button onclick="switchTab('katalog')" id="nav-katalog" class="px-3 py-2 rounded-xl text-xs sm:text-sm font-bold bg-indigo-50 text-indigo-700 transition-colors">
+          Katalog
+        </button>
+        <button onclick="switchTab('request')" id="nav-request" class="px-3 py-2 rounded-xl text-xs sm:text-sm font-semibold text-slate-600 hover:bg-slate-100 transition-colors">
+          Request Buku
+        </button>
+        <button onclick="switchTab('akun-siswa')" id="nav-akun-siswa" class="hidden px-3 py-2 rounded-xl text-xs sm:text-sm font-bold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 transition-colors flex items-center gap-1.5">
+          <i data-lucide="user-check" class="w-4 h-4"></i>
+          <span id="nav-siswa-name">Akun Saya</span>
+        </button>
+        <button onclick="switchTab('admin')" id="nav-admin" class="hidden px-3 py-2 rounded-xl text-xs sm:text-sm font-bold text-indigo-700 bg-indigo-50 hover:bg-indigo-100 transition-colors flex items-center gap-1.5">
+          <i data-lucide="shield-check" class="w-4 h-4"></i>
+          <span>Dashboard Admin</span>
+        </button>
+        <button onclick="handleAuthButtonClick()" id="btn-auth-nav" class="px-3.5 py-2 rounded-xl text-xs sm:text-sm font-bold bg-indigo-600 hover:bg-indigo-700 text-white transition-colors flex items-center gap-1.5 shadow-sm">
+          <i id="auth-nav-icon" data-lucide="log-in" class="w-4 h-4"></i>
+          <span id="auth-nav-text">Login</span>
+        </button>
+      </nav>
+    </div>
+  </header>
+
+  <!-- Main Content -->
+  <main class="flex-grow max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
+
+    <!-- Loading Indicator -->
+    <div id="loading-overlay" class="bg-white border border-slate-200 rounded-2xl p-10 text-center space-y-3 shadow-sm">
+      <div class="w-10 h-10 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin mx-auto"></div>
+      <p class="text-sm font-semibold text-slate-700">Memuat data Library Spentigs...</p>
+      <p class="text-xs text-slate-400">Menghubungkan ke database perpustakaan SMPN 39 Surabaya</p>
+    </div>
+
+    <!-- ==================== TAB 1: KATALOG BUKU ==================== -->
+    <section id="view-katalog" class="hidden space-y-6">
+      <!-- Ringkasan Statistik -->
+      <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <div class="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm">
+          <p class="text-xs font-semibold text-slate-500">Total Judul Buku</p>
+          <p id="stat-total-books" class="text-2xl font-extrabold text-slate-900 mt-1">0</p>
+        </div>
+        <div class="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm">
+          <p class="text-xs font-semibold text-slate-500">Total Stok Tersedia</p>
+          <p id="stat-available-stock" class="text-2xl font-extrabold text-emerald-600 mt-1">0</p>
+        </div>
+        <div class="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm">
+          <p class="text-xs font-semibold text-slate-500">Sedang Dipinjam</p>
+          <p id="stat-active-loans" class="text-2xl font-extrabold text-amber-600 mt-1">0</p>
+        </div>
+        <div class="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm">
+          <p class="text-xs font-semibold text-slate-500">Kategori Koleksi</p>
+          <p id="stat-categories" class="text-2xl font-extrabold text-indigo-600 mt-1">0</p>
+        </div>
+      </div>
+
+      <!-- Bar Pencarian, Filter Kategori & Scan Barcode -->
+      <div class="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3">
+        <div class="relative flex-grow">
+          <i data-lucide="search" class="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2"></i>
+          <input type="text" id="search-input" onkeyup="filterBooks()" placeholder="Cari judul buku, penulis, atau kode barcode..."
+            class="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-300 bg-white text-slate-800 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+        </div>
+
+        <div class="flex flex-wrap sm:flex-nowrap items-center gap-2.5">
+          <select id="category-filter" onchange="filterBooks()"
+            class="px-3.5 py-2.5 rounded-xl border border-slate-300 bg-white text-slate-800 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-indigo-500">
+            <option value="ALL" class="text-slate-800 bg-white">Semua Kategori</option>
+          </select>
+
+          <button onclick="openBarcodeScanner('katalog')"
+            class="px-4 py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs sm:text-sm font-bold flex items-center gap-2 whitespace-nowrap transition-colors">
+            <i data-lucide="scan-barcode" class="w-4 h-4"></i>
+            Scan Barcode
+          </button>
+        </div>
+      </div>
+
+      <div class="flex items-center justify-between">
+        <h2 class="text-lg font-bold text-slate-900">Koleksi Buku Perpustakaan</h2>
+        <span id="book-count-label" class="text-xs font-semibold text-slate-500">Menampilkan 0 buku</span>
+      </div>
+
+      <!-- Grid Buku -->
+      <div id="books-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5"></div>
+
+      <!-- Empty State -->
+      <div id="empty-books" class="hidden bg-white border border-slate-200 rounded-2xl p-10 text-center space-y-2">
+        <p class="text-sm font-bold text-slate-700">Buku tidak ditemukan</p>
+        <p class="text-xs text-slate-400">Coba kata kunci lain atau reset filter kategori.</p>
+      </div>
+    </section>
+
+    <!-- ==================== TAB 2: REQUEST PENGADAAN BUKU ==================== -->
+    <section id="view-request" class="hidden space-y-6">
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm h-fit">
+          <h2 class="text-lg font-bold text-slate-900 mb-1">Usulkan Pengadaan Buku</h2>
+          <p class="text-xs text-slate-500 mb-4">Buku yang belum ada di katalog dapat diusulkan kepada pustakawan SMPN 39 Surabaya.</p>
+
+          <form id="form-request-book" onsubmit="handleBookRequestSubmit(event)" class="space-y-3.5">
+            <div>
+              <label class="block text-xs font-semibold text-slate-700 mb-1">Nama Pengusul *</label>
+              <input type="text" id="req-pengusul" required placeholder="Nama siswa / guru / pengunjung"
+                class="w-full px-3.5 py-2 rounded-xl border border-slate-300 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+            </div>
+            <div>
+              <label class="block text-xs font-semibold text-slate-700 mb-1">NIS & Kelas / Status *</label>
+              <input type="text" id="req-niskelas" required placeholder="Contoh: 2026001 (VIII-A)"
+                class="w-full px-3.5 py-2 rounded-xl border border-slate-300 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+            </div>
+            <div>
+              <label class="block text-xs font-semibold text-slate-700 mb-1">Judul Buku yang Diusulkan *</label>
+              <input type="text" id="req-judul" required placeholder="Judul lengkap buku"
+                class="w-full px-3.5 py-2 rounded-xl border border-slate-300 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+            </div>
+            <div class="grid grid-cols-2 gap-3">
+              <div>
+                <label class="block text-xs font-semibold text-slate-700 mb-1">Penulis *</label>
+                <input type="text" id="req-penulis" required placeholder="Nama penulis"
+                  class="w-full px-3.5 py-2 rounded-xl border border-slate-300 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+              </div>
+              <div>
+                <label class="block text-xs font-semibold text-slate-700 mb-1">Kategori *</label>
+                <input type="text" id="req-kategori" required placeholder="Fiksi, Pelajaran..."
+                  class="w-full px-3.5 py-2 rounded-xl border border-slate-300 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+              </div>
+            </div>
+            <div>
+              <label class="block text-xs font-semibold text-slate-700 mb-1">Alasan Pengadaan *</label>
+              <textarea id="req-alasan" rows="3" required placeholder="Mengapa buku ini bermanfaat bagi warga Spentigs?"
+                class="w-full px-3.5 py-2 rounded-xl border border-slate-300 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"></textarea>
+            </div>
+            <button type="submit" id="btn-submit-req" class="w-full py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-bold flex items-center justify-center gap-2 transition-colors">
+              <i data-lucide="send" class="w-4 h-4"></i>
+              Kirim Usulan Buku
+            </button>
+          </form>
+        </div>
+
+        <div class="lg:col-span-2 bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
+          <h3 class="text-base font-bold text-slate-900 mb-4">Daftar Usulan Pengadaan Buku</h3>
+          <div class="overflow-x-auto">
+            <table class="w-full text-left border-collapse">
+              <thead>
+                <tr class="border-b border-slate-200 text-xs font-bold text-slate-500 uppercase bg-slate-50">
+                  <th class="py-3 px-4">Tanggal</th>
+                  <th class="py-3 px-4">Judul & Penulis</th>
+                  <th class="py-3 px-4">Pengusul</th>
+                  <th class="py-3 px-4">Status</th>
+                </tr>
+              </thead>
+              <tbody id="public-requests-tbody" class="divide-y divide-slate-100 text-sm"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ==================== TAB 3: AKUN & RIWAYAT PEMINJAMAN SISWA ==================== -->
+    <section id="view-akun-siswa" class="hidden space-y-6">
+      <div class="bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 rounded-2xl p-6 sm:p-8 text-white shadow-lg flex flex-col md:flex-row items-center justify-between gap-6">
+        <div class="space-y-2 text-center md:text-left">
+          <span class="px-3 py-1 rounded-full bg-emerald-500/20 text-emerald-300 text-xs font-bold uppercase tracking-wider">
+            Kartu Anggota Digital Spentigs
+          </span>
+          <h2 id="student-profile-name" class="text-2xl sm:text-3xl font-extrabold">Nama Siswa</h2>
+          <p id="student-profile-meta" class="text-indigo-200 text-sm">NIS: - • Kelas: -</p>
+          <p class="text-xs text-slate-400 pt-1">Tunjukkan barcode di samping kepada petugas perpustakaan saat meminjam buku secara langsung.</p>
+        </div>
+        <div class="bg-white p-4 rounded-2xl shadow-md flex flex-col items-center">
+          <svg id="student-barcode-svg"></svg>
+          <span class="text-[10px] font-bold text-slate-400 tracking-widest uppercase mt-1">SMPN 39 SURABAYA</span>
+        </div>
+      </div>
+
+      <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
+        <div class="flex items-center justify-between mb-4">
+          <div>
+            <h3 class="text-lg font-bold text-slate-900">Riwayat Peminjaman Saya</h3>
+            <p class="text-xs text-slate-500">Daftar buku yang sedang maupun pernah Anda pinjam di Library Spentigs</p>
+          </div>
+          <button onclick="fetchData(true)" class="px-3.5 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold rounded-xl flex items-center gap-1.5">
+            <i data-lucide="refresh-cw" class="w-3.5 h-3.5"></i> Perbarui
+          </button>
+        </div>
+
+        <div class="overflow-x-auto">
+          <table class="w-full text-left border-collapse">
+            <thead>
+              <tr class="border-b border-slate-200 text-xs font-bold text-slate-500 uppercase bg-slate-50">
+                <th class="py-3 px-4">ID Transaksi</th>
+                <th class="py-3 px-4">Judul Buku</th>
+                <th class="py-3 px-4">Tgl Pinjam</th>
+                <th class="py-3 px-4">Batas Kembali</th>
+                <th class="py-3 px-4">Status</th>
+              </tr>
+            </thead>
+            <tbody id="student-loans-tbody" class="divide-y divide-slate-100 text-sm"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- ==================== TAB 4: DASHBOARD ADMIN LENGKAP ==================== -->
+    <section id="view-admin" class="hidden space-y-6">
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
+        <div>
+          <div class="flex items-center gap-2">
+            <span class="px-2.5 py-0.5 rounded-md bg-indigo-100 text-indigo-700 text-xs font-bold">ADMINISTRATOR</span>
+            <h2 class="text-xl font-bold text-slate-900">Dashboard Pustakawan Spentigs</h2>
+          </div>
+          <p class="text-sm text-slate-500 mt-1">Pusat kendali sirkulasi peminjaman, manajemen buku, akun siswa & guru, grafik, export, dan usulan pengadaan.</p>
+        </div>
+        <div class="flex flex-wrap items-center gap-2">
+          <button onclick="exportAdminSection('all', 'excel')" class="px-3.5 py-2.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 text-xs font-bold rounded-xl transition-colors flex items-center gap-1.5">
+            <i data-lucide="file-spreadsheet" class="w-4 h-4"></i> Export Excel
+          </button>
+          <button onclick="exportAdminSection('all', 'pdf')" class="px-3.5 py-2.5 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 text-xs font-bold rounded-xl transition-colors flex items-center gap-1.5">
+            <i data-lucide="file-text" class="w-4 h-4"></i> Export PDF
+          </button>
+          <button onclick="openAdminDirectBorrowModal()" class="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs sm:text-sm font-bold rounded-xl shadow-sm transition-colors flex items-center gap-2">
+            <i data-lucide="scan-barcode" class="w-4 h-4"></i> Input Pinjam Buku
+          </button>
+          <button onclick="openAddBookModal()" class="px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white text-xs sm:text-sm font-bold rounded-xl shadow-sm transition-colors flex items-center gap-2">
+            <i data-lucide="plus" class="w-4 h-4"></i> Tambah Buku
+          </button>
+        </div>
+      </div>
+
+      <!-- Sub-Navigasi Tab Admin -->
+      <div class="flex overflow-x-auto gap-2 pb-1">
+        <button onclick="switchAdminSubTab('overview')" id="subnav-overview" class="px-4 py-2.5 rounded-xl text-xs sm:text-sm font-bold bg-slate-900 text-white whitespace-nowrap flex items-center gap-2">
+          <i data-lucide="pie-chart" class="w-4 h-4"></i> Grafik & Rekapan
+        </button>
+        <button onclick="switchAdminSubTab('sirkulasi')" id="subnav-sirkulasi" class="px-4 py-2.5 rounded-xl text-xs sm:text-sm font-bold bg-white text-slate-600 border border-slate-200 hover:bg-slate-50 whitespace-nowrap flex items-center gap-2">
+          <i data-lucide="repeat" class="w-4 h-4"></i> Sirkulasi Peminjaman
+        </button>
+        <button onclick="switchAdminSubTab('buku')" id="subnav-buku" class="px-4 py-2.5 rounded-xl text-xs sm:text-sm font-bold bg-white text-slate-600 border border-slate-200 hover:bg-slate-50 whitespace-nowrap flex items-center gap-2">
+          <i data-lucide="book-copy" class="w-4 h-4"></i> Manajemen Buku & Barcode
+        </button>
+        <button onclick="switchAdminSubTab('siswa')" id="subnav-siswa" class="px-4 py-2.5 rounded-xl text-xs sm:text-sm font-bold bg-white text-slate-600 border border-slate-200 hover:bg-slate-50 whitespace-nowrap flex items-center gap-2">
+          <i data-lucide="users" class="w-4 h-4"></i> Kelola Akun Siswa & Guru
+        </button>
+        <button onclick="switchAdminSubTab('requests')" id="subnav-requests" class="px-4 py-2.5 rounded-xl text-xs sm:text-sm font-bold bg-white text-slate-600 border border-slate-200 hover:bg-slate-50 whitespace-nowrap flex items-center gap-2">
+          <i data-lucide="inbox" class="w-4 h-4"></i> Request Pengadaan
+          <span id="badge-pending-req" class="px-1.5 py-0.5 text-[10px] rounded-full bg-rose-500 text-white hidden">0</span>
+        </button>
+      </div>
+
+      <!-- SUB-TAB ADMIN 1: GRAFIK & REKAPAN -->
+      <div id="admin-panel-overview" class="space-y-6">
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
+            <h3 class="text-base font-bold text-slate-900 mb-4 flex items-center gap-2">
+              <i data-lucide="bar-chart-3" class="w-5 h-5 text-indigo-600"></i>
+              Grafik Koleksi Buku per Kategori
+            </h3>
+            <div class="h-64">
+              <canvas id="chart-categories"></canvas>
+            </div>
+          </div>
+          <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
+            <h3 class="text-base font-bold text-slate-900 mb-4 flex items-center gap-2">
+              <i data-lucide="trending-up" class="w-5 h-5 text-emerald-600"></i>
+              Status Sirkulasi Peminjaman
+            </h3>
+            <div class="h-64 flex items-center justify-center">
+              <canvas id="chart-loans"></canvas>
+            </div>
+          </div>
+        </div>
+
+        <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
+          <div class="flex flex-wrap items-center justify-between gap-2 mb-4">
+            <h3 class="text-base font-bold text-slate-900">Rekapan Aktivitas Peminjaman Terakhir</h3>
+            <div class="flex items-center gap-2">
+              <button onclick="exportAdminSection('loans', 'excel')" class="px-3 py-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 text-xs font-bold rounded-lg">Excel</button>
+              <button onclick="exportAdminSection('loans', 'pdf')" class="px-3 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 text-xs font-bold rounded-lg">PDF</button>
+              <button onclick="switchAdminSubTab('sirkulasi')" class="text-xs font-bold text-indigo-600 hover:underline ml-1">Lihat Semua &rarr;</button>
+            </div>
+          </div>
+          <div class="overflow-x-auto">
+            <table class="w-full text-left border-collapse">
+              <thead>
+                <tr class="border-b border-slate-200 text-xs font-bold text-slate-500 uppercase bg-slate-50">
+                  <th class="py-3 px-4">ID</th>
+                  <th class="py-3 px-4">Peminjam</th>
+                  <th class="py-3 px-4">Judul Buku</th>
+                  <th class="py-3 px-4">Tgl Pinjam</th>
+                  <th class="py-3 px-4">Status</th>
+                </tr>
+              </thead>
+              <tbody id="admin-recap-tbody" class="divide-y divide-slate-100 text-sm"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- SUB-TAB ADMIN 2: SIRKULASI PEMINJAMAN & PENGEMBALIAN -->
+      <div id="admin-panel-sirkulasi" class="hidden bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
+          <h3 class="text-base font-bold text-slate-900">Kelola Peminjaman & Pengembalian Buku</h3>
+          <div class="flex flex-wrap gap-2">
+            <input type="text" id="admin-search-loan" onkeyup="renderAdminLoans()" placeholder="Cari nama, NIS, atau buku..." class="px-3.5 py-2 rounded-xl border border-slate-300 text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500">
+            <button onclick="exportAdminSection('loans', 'excel')" class="px-3 py-2 bg-emerald-50 text-emerald-700 border border-emerald-200 text-xs font-bold rounded-xl">Excel</button>
+            <button onclick="exportAdminSection('loans', 'pdf')" class="px-3 py-2 bg-rose-50 text-rose-700 border border-rose-200 text-xs font-bold rounded-xl">PDF</button>
+            <button onclick="openAdminDirectBorrowModal()" class="px-3.5 py-2 bg-emerald-600 text-white text-xs font-bold rounded-xl hover:bg-emerald-700">+ Pinjam Baru</button>
+          </div>
+        </div>
+        <div class="overflow-x-auto">
+          <table class="w-full text-left border-collapse">
+            <thead>
+              <tr class="border-b border-slate-200 text-xs font-bold text-slate-500 uppercase bg-slate-50">
+                <th class="py-3 px-3">ID & Tgl Pinjam</th>
+                <th class="py-3 px-3">Peminjam</th>
+                <th class="py-3 px-3">Buku</th>
+                <th class="py-3 px-3">Batas Kembali</th>
+                <th class="py-3 px-3">Status</th>
+                <th class="py-3 px-3 text-right">Aksi</th>
+              </tr>
+            </thead>
+            <tbody id="admin-loans-tbody" class="divide-y divide-slate-100 text-sm"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- SUB-TAB ADMIN 3: MANAJEMEN BUKU & BARCODE -->
+      <div id="admin-panel-buku" class="hidden bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
+          <h3 class="text-base font-bold text-slate-900">Manajemen Koleksi Buku & Cetak Barcode</h3>
+          <div class="flex flex-wrap gap-2">
+            <button onclick="exportAdminSection('books', 'excel')" class="px-3 py-2 bg-emerald-50 text-emerald-700 border border-emerald-200 text-xs font-bold rounded-xl">Excel</button>
+            <button onclick="exportAdminSection('books', 'pdf')" class="px-3 py-2 bg-rose-50 text-rose-700 border border-rose-200 text-xs font-bold rounded-xl">PDF</button>
+            <button onclick="openAddBookModal()" class="px-4 py-2 bg-indigo-600 text-white text-xs font-bold rounded-xl hover:bg-indigo-700">+ Tambah Buku Baru</button>
+          </div>
+        </div>
+        <div class="overflow-x-auto">
+          <table class="w-full text-left border-collapse">
+            <thead>
+              <tr class="border-b border-slate-200 text-xs font-bold text-slate-500 uppercase bg-slate-50">
+                <th class="py-3 px-4">ID Barcode</th>
+                <th class="py-3 px-4">Judul & Penulis</th>
+                <th class="py-3 px-4">Kategori</th>
+                <th class="py-3 px-4">Stok</th>
+                <th class="py-3 px-4 text-right">Aksi</th>
+              </tr>
+            </thead>
+            <tbody id="admin-books-tbody" class="divide-y divide-slate-100 text-sm"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- SUB-TAB ADMIN 4: KELOLA AKUN SISWA & GURU -->
+      <div id="admin-panel-siswa" class="hidden space-y-6">
+        <div class="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <h3 class="text-sm font-bold text-slate-900">Template Excel & Import Massal Akun Siswa / Guru</h3>
+            <p class="text-xs text-slate-500">Unduh template sesuai peran, isi data, lalu import sekaligus atau export akun.</p>
+          </div>
+          <div class="flex flex-wrap items-center gap-2">
+            <button onclick="downloadAccountTemplate('SISWA')" class="px-3 py-2 bg-sky-50 hover:bg-sky-100 text-sky-700 border border-sky-200 text-xs font-bold rounded-xl flex items-center gap-1.5">
+              <i data-lucide="download" class="w-3.5 h-3.5"></i> Template Siswa (.xlsx)
+            </button>
+            <button onclick="downloadAccountTemplate('GURU')" class="px-3 py-2 bg-violet-50 hover:bg-violet-100 text-violet-700 border border-violet-200 text-xs font-bold rounded-xl flex items-center gap-1.5">
+              <i data-lucide="download" class="w-3.5 h-3.5"></i> Template Guru (.xlsx)
+            </button>
+            <button onclick="openImportAccountsModal()" class="px-3.5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold rounded-xl flex items-center gap-1.5">
+              <i data-lucide="upload" class="w-3.5 h-3.5"></i> Import Akun
+            </button>
+            <button onclick="exportAdminSection('users', 'excel')" class="px-3 py-2 bg-emerald-50 text-emerald-700 border border-emerald-200 text-xs font-bold rounded-xl">Excel</button>
+            <button onclick="exportAdminSection('users', 'pdf')" class="px-3 py-2 bg-rose-50 text-rose-700 border border-rose-200 text-xs font-bold rounded-xl">PDF</button>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm h-fit">
+            <h3 class="text-base font-bold text-slate-900 mb-4 flex items-center gap-2">
+              <i data-lucide="user-plus" class="w-5 h-5 text-indigo-600"></i>
+              Tambah Akun Satuan
+            </h3>
+            <form id="form-add-user" onsubmit="submitAddUser(event)" class="space-y-3.5">
+              <div>
+                <label class="block text-xs font-semibold text-slate-700 mb-1">NIS / NIP / Username Login *</label>
+                <input type="text" id="user-nis" required placeholder="Contoh: 2026005" class="w-full px-3.5 py-2 rounded-xl border border-slate-300 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+              </div>
+              <div>
+                <label class="block text-xs font-semibold text-slate-700 mb-1">Password Akun *</label>
+                <input type="text" id="user-pass" required value="spentigs123" class="w-full px-3.5 py-2 rounded-xl border border-slate-300 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+              </div>
+              <div>
+                <label class="block text-xs font-semibold text-slate-700 mb-1">Nama Lengkap *</label>
+                <input type="text" id="user-nama" required placeholder="Nama lengkap siswa / guru" class="w-full px-3.5 py-2 rounded-xl border border-slate-300 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+              </div>
+              <div class="grid grid-cols-2 gap-3">
+                <div>
+                  <label class="block text-xs font-semibold text-slate-700 mb-1">Kelas / Jabatan *</label>
+                  <input type="text" id="user-kelas" required placeholder="VIII-A / Mapel IPA" class="w-full px-3.5 py-2 rounded-xl border border-slate-300 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                </div>
+                <div>
+                  <label class="block text-xs font-semibold text-slate-700 mb-1">Hak Akses *</label>
+                  <select id="user-role" class="w-full px-3 py-2 rounded-xl border border-slate-300 text-sm bg-white text-slate-800 font-medium">
+                    <option value="SISWA">SISWA</option>
+                    <option value="GURU">GURU</option>
+                    <option value="ADMIN">ADMIN</option>
+                  </select>
+                </div>
+              </div>
+              <button type="submit" id="btn-submit-user" class="w-full py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-bold rounded-xl shadow-sm">
+                Daftarkan Akun
+              </button>
+            </form>
+          </div>
+
+          <div class="lg:col-span-2 bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
+            <h3 class="text-base font-bold text-slate-900 mb-4">Daftar Akun Terdaftar</h3>
+            <div class="overflow-x-auto">
+              <table class="w-full text-left border-collapse">
+                <thead>
+                  <tr class="border-b border-slate-200 text-xs font-bold text-slate-500 uppercase bg-slate-50">
+                    <th class="py-3 px-4">NIS/NIP</th>
+                    <th class="py-3 px-4">Nama Lengkap</th>
+                    <th class="py-3 px-4">Kelas/Jabatan</th>
+                    <th class="py-3 px-4">Role</th>
+                    <th class="py-3 px-4 text-right">Aksi</th>
+                  </tr>
+                </thead>
+                <tbody id="admin-users-tbody" class="divide-y divide-slate-100 text-sm"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- SUB-TAB ADMIN 5: KELOLA REQUEST PENGADAAN BUKU -->
+      <div id="admin-panel-requests" class="hidden bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
+        <div class="flex flex-wrap items-center justify-between gap-2 mb-4">
+          <h3 class="text-base font-bold text-slate-900">Usulan Pengadaan Buku dari Siswa & Pengunjung</h3>
+          <div class="flex gap-2">
+            <button onclick="exportAdminSection('requests', 'excel')" class="px-3 py-1.5 bg-emerald-50 text-emerald-700 border border-emerald-200 text-xs font-bold rounded-lg">Excel</button>
+            <button onclick="exportAdminSection('requests', 'pdf')" class="px-3 py-1.5 bg-rose-50 text-rose-700 border border-rose-200 text-xs font-bold rounded-lg">PDF</button>
+          </div>
+        </div>
+        <div class="overflow-x-auto">
+          <table class="w-full text-left border-collapse">
+            <thead>
+              <tr class="border-b border-slate-200 text-xs font-bold text-slate-500 uppercase bg-slate-50">
+                <th class="py-3 px-4">Pengusul</th>
+                <th class="py-3 px-4">Judul & Penulis</th>
+                <th class="py-3 px-4">Alasan Usulan</th>
+                <th class="py-3 px-4">Status</th>
+                <th class="py-3 px-4 text-right">Keputusan</th>
+              </tr>
+            </thead>
+            <tbody id="admin-requests-tbody" class="divide-y divide-slate-100 text-sm"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- Footer -->
+  <footer class="bg-white border-t border-slate-200 py-6 mt-12">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-slate-500">
+      <p class="font-medium">&copy; 2026 <span class="font-bold text-slate-700">Library Spentigs</span> — Perpustakaan Digital SMP Negeri 39 Surabaya.</p>
+      <p>Jl. Prapen Panjang Jiwo, Tenggilis Mejoyo, Surabaya.</p>
+    </div>
+  </footer>
+
+  <!-- ==================== CHATBOT WIDGET (ASISTEN SPENTIGS) ==================== -->
+  <div class="fixed bottom-5 right-5 z-50">
+    <div id="chatbot-window" class="hidden mb-3 w-80 sm:w-96 bg-white rounded-2xl shadow-2xl border border-slate-200 overflow-hidden flex flex-col">
+      <div class="bg-indigo-600 p-4 text-white flex items-center justify-between">
+        <div class="flex items-center gap-2.5">
+          <div class="w-9 h-9 rounded-full bg-white/20 flex items-center justify-center">
+            <i data-lucide="bot" class="w-5 h-5"></i>
+          </div>
+          <div>
+            <h4 class="font-bold text-sm leading-none">Asisten Spentigs</h4>
+            <p class="text-[11px] text-indigo-100 mt-1">Tanya buku & info Perpus SMPN 39 SBY</p>
+          </div>
+        </div>
+        <button onclick="toggleChatbot()" class="text-white/80 hover:text-white p-1">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+
+      <div id="chat-messages" class="p-4 h-72 overflow-y-auto space-y-3 bg-slate-50 text-xs">
+        <div class="bg-white p-3 rounded-2xl rounded-tl-none border border-slate-200/80 shadow-sm text-slate-700 leading-relaxed">
+          Halo! Saya <b>Asisten Virtual Library Spentigs</b> (SMPN 39 Surabaya). 👋<br><br>
+          Kamu bisa menanyakan:<br>
+          • Ketersediaan judul buku<br>
+          • Jam buka & lokasi perpustakaan<br>
+          • Cara meminjam & aturan peminjaman
+        </div>
+      </div>
+
+      <div class="px-3 py-2 bg-white border-t border-slate-100 flex gap-1.5 overflow-x-auto">
+        <button onclick="sendQuickChat('Jam buka perpustakaan')" class="px-2.5 py-1 rounded-full bg-indigo-50 text-indigo-700 text-[11px] font-semibold whitespace-nowrap hover:bg-indigo-100">Jam Buka</button>
+        <button onclick="sendQuickChat('Cara pinjam buku')" class="px-2.5 py-1 rounded-full bg-indigo-50 text-indigo-700 text-[11px] font-semibold whitespace-nowrap hover:bg-indigo-100">Cara Pinjam</button>
+        <button onclick="sendQuickChat('Profil SMPN 39 Surabaya')" class="px-2.5 py-1 rounded-full bg-indigo-50 text-indigo-700 text-[11px] font-semibold whitespace-nowrap hover:bg-indigo-100">Info SMPN 39</button>
+      </div>
+
+      <form onsubmit="handleChatSubmit(event)" class="p-3 bg-white border-t border-slate-200 flex gap-2">
+        <input type="text" id="chat-input" placeholder="Ketik pertanyaanmu..." class="flex-grow px-3.5 py-2 rounded-xl bg-slate-100 text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500">
+        <button type="submit" class="p-2 rounded-xl bg-indigo-600 text-white hover:bg-indigo-700 transition-colors">
+          <i data-lucide="send" class="w-4 h-4"></i>
+        </button>
+      </form>
+    </div>
+
+    <button onclick="toggleChatbot()" class="ml-auto w-14 h-14 rounded-full bg-indigo-600 hover:bg-indigo-700 text-white shadow-xl shadow-indigo-300 flex items-center justify-center transition-transform hover:scale-105">
+      <i data-lucide="message-circle-question" class="w-6 h-6"></i>
+    </button>
+  </div>
+
+  <!-- ==================== MODALS ==================== -->
+
+  <!-- Modal Login Terpadu -->
+  <div id="modal-login" class="fixed inset-0 z-50 hidden bg-slate-900/50 backdrop-blur-sm flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl max-w-sm w-full p-6 shadow-2xl">
+      <div class="w-12 h-12 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center mx-auto mb-3">
+        <i data-lucide="key-round" class="w-6 h-6"></i>
+      </div>
+      <h3 class="text-lg font-bold text-center text-slate-900">Login Library Spentigs</h3>
+      <p class="text-xs text-center text-slate-500 mt-1 mb-5">Masuk menggunakan akun <b>Siswa / Guru</b> atau <b>Admin Pustakawan</b></p>
+
+      <form onsubmit="submitLogin(event)" class="space-y-3.5">
+        <div>
+          <label class="block text-xs font-semibold text-slate-700 mb-1">NIS / NIP / Username</label>
+          <input type="text" id="login-username" required placeholder="Masukkan NIS atau username" class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-slate-700 mb-1">Password</label>
+          <input type="password" id="login-password" required placeholder="••••••••" class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+        </div>
+        <!-- <div class="bg-slate-50 p-2.5 rounded-xl border border-slate-200/70 text-[11px] text-slate-500">
+          <p><b>Demo Siswa:</b> NIS <code>2026001</code> / Pass <code>siswa123</code></p>
+          <p><b>Demo Admin:</b> User <code>admin</code> / Pass <code>admin123</code></p>
+        </div> -->
+        <div class="flex gap-2 pt-1">
+          <button type="button" onclick="closeModal('modal-login')" class="w-1/2 py-2.5 rounded-xl text-sm font-semibold text-slate-600 bg-slate-100 hover:bg-slate-200">Batal</button>
+          <button type="submit" id="btn-submit-login" class="w-1/2 py-2.5 rounded-xl text-sm font-semibold text-white bg-indigo-600 hover:bg-indigo-700">Masuk</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal Detail & Pinjam Buku -->
+  <div id="modal-borrow" class="fixed inset-0 z-50 hidden bg-slate-900/50 backdrop-blur-sm flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl max-w-lg w-full overflow-hidden shadow-2xl">
+      <div class="relative h-44 bg-slate-100">
+        <img id="modal-book-cover" src="" alt="Cover" class="w-full h-full object-cover" onerror="this.src='https://images.unsplash.com/photo-1543002588-bfa74002ed7e?auto=format&fit=crop&q=80&w=400'">
+        <div class="absolute inset-0 bg-gradient-to-t from-slate-900/85 via-slate-900/30 to-transparent"></div>
+        <button onclick="closeModal('modal-borrow')" class="absolute top-4 right-4 w-8 h-8 rounded-full bg-black/40 text-white hover:bg-black/60 flex items-center justify-center">
+          <i data-lucide="x" class="w-4 h-4"></i>
+        </button>
+        <div class="absolute bottom-4 left-6 right-6 text-white">
+          <span id="modal-book-category" class="px-2.5 py-0.5 rounded-md bg-indigo-600 text-[11px] font-bold uppercase">Kategori</span>
+          <h3 id="modal-book-title" class="text-xl font-bold mt-1 leading-snug">Judul Buku</h3>
+          <p id="modal-book-author" class="text-xs text-slate-200">Penulis • Tahun</p>
+        </div>
+      </div>
+
+      <div class="p-6 space-y-4">
+        <p id="modal-book-desc" class="text-xs text-slate-600 leading-relaxed bg-slate-50 p-3.5 rounded-xl border border-slate-100"></p>
+
+        <div id="borrow-login-warning" class="hidden bg-amber-50 border border-amber-200 p-4 rounded-xl text-center space-y-3">
+          <p class="text-xs font-semibold text-amber-800">Silakan login terlebih dahulu menggunakan akun Anda untuk meminjam buku ini.</p>
+          <button onclick="closeModal('modal-borrow'); openLoginModal();" class="px-4 py-2 bg-indigo-600 text-white text-xs font-bold rounded-xl hover:bg-indigo-700">
+            Login Akun Sekarang
+          </button>
+        </div>
+
+        <form id="form-borrow" onsubmit="submitBorrow(event)" class="space-y-3.5">
+          <input type="hidden" id="borrow-book-id">
+          <div class="bg-indigo-50/70 p-3.5 rounded-xl border border-indigo-100 text-xs space-y-1">
+            <p class="text-indigo-900 font-bold">Data Peminjam (Otomatis dari Akun):</p>
+            <p class="text-slate-700">Nama: <b id="borrow-display-nama">-</b></p>
+            <p class="text-slate-700">NIS / Kelas: <b id="borrow-display-niskelas">-</b></p>
+            <p class="text-slate-500 pt-1">Durasi peminjaman adalah <b>7 hari</b> sejak konfirmasi.</p>
+          </div>
+
+          <div class="pt-1 flex items-center justify-end gap-3">
+            <button type="button" onclick="closeModal('modal-borrow')" class="px-4 py-2.5 rounded-xl text-sm font-semibold text-slate-600 hover:bg-slate-100">Batal</button>
+            <button type="submit" id="btn-submit-borrow" class="px-5 py-2.5 rounded-xl text-sm font-semibold bg-indigo-600 hover:bg-indigo-700 text-white shadow-sm flex items-center gap-2">
+              <i data-lucide="book-check" class="w-4 h-4"></i>
+              Konfirmasi Pinjam
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal Input Peminjaman Langsung oleh Admin -->
+  <div id="modal-admin-borrow" class="fixed inset-0 z-50 hidden bg-slate-900/50 backdrop-blur-sm flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl">
+      <div class="flex items-center justify-between pb-3 border-b border-slate-100 mb-4">
+        <h3 class="text-lg font-bold text-slate-900">Catat Peminjaman (Petugas)</h3>
+        <button onclick="closeModal('modal-admin-borrow')" class="text-slate-400 hover:text-slate-600"><i data-lucide="x" class="w-5 h-5"></i></button>
+      </div>
+
+      <form onsubmit="submitAdminDirectBorrow(event)" class="space-y-4">
+        <div>
+          <label class="block text-xs font-semibold text-slate-700 mb-1">ID / Barcode Buku *</label>
+          <div class="flex gap-2">
+            <input type="text" id="admin-borrow-bookid" required placeholder="Ketik atau scan ID buku (BK-001)" class="flex-grow px-3.5 py-2 rounded-xl border border-slate-300 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+            <button type="button" onclick="openBarcodeScanner('admin-book')" class="px-3 py-2 bg-indigo-50 text-indigo-700 rounded-xl hover:bg-indigo-100 flex items-center gap-1 text-xs font-bold">
+              <i data-lucide="scan-barcode" class="w-4 h-4"></i> Scan
+            </button>
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-xs font-semibold text-slate-700 mb-1">NIS / NIP Peminjam *</label>
+          <div class="flex gap-2">
+            <input type="text" id="admin-borrow-nis" onkeyup="autoFillStudentByNis()" required placeholder="Ketik atau scan barcode kartu" class="flex-grow px-3.5 py-2 rounded-xl border border-slate-300 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+            <button type="button" onclick="openBarcodeScanner('admin-student')" class="px-3 py-2 bg-emerald-50 text-emerald-700 rounded-xl hover:bg-emerald-100 flex items-center gap-1 text-xs font-bold">
+              <i data-lucide="scan-barcode" class="w-4 h-4"></i> Scan
+            </button>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs font-semibold text-slate-700 mb-1">Nama Peminjam *</label>
+            <input type="text" id="admin-borrow-nama" required placeholder="Terisi otomatis jika terdaftar" class="w-full px-3.5 py-2 rounded-xl border border-slate-300 text-sm">
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-700 mb-1">Kelas / Jabatan *</label>
+            <input type="text" id="admin-borrow-kelas" required placeholder="Contoh: VIII-A" class="w-full px-3.5 py-2 rounded-xl border border-slate-300 text-sm">
+          </div>
+        </div>
+
+        <div class="flex justify-end gap-2 pt-2">
+          <button type="button" onclick="closeModal('modal-admin-borrow')" class="px-4 py-2 rounded-xl text-sm font-semibold text-slate-600 hover:bg-slate-100">Batal</button>
+          <button type="submit" id="btn-admin-borrow-submit" class="px-5 py-2 rounded-xl text-sm font-bold bg-emerald-600 hover:bg-emerald-700 text-white">Proses Pinjam</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal Tambah Buku -->
+  <div id="modal-add-book" class="fixed inset-0 z-50 hidden bg-slate-900/50 backdrop-blur-sm flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl max-w-lg w-full p-6 shadow-2xl max-h-[90vh] overflow-y-auto">
+      <div class="flex items-center justify-between pb-3 border-b border-slate-100 mb-4">
+        <h3 class="text-lg font-bold text-slate-900">Tambah Koleksi Buku Baru</h3>
+        <button onclick="closeModal('modal-add-book')" class="text-slate-400 hover:text-slate-600"><i data-lucide="x" class="w-5 h-5"></i></button>
+      </div>
+
+      <form id="form-add-book" onsubmit="submitAddBook(event)" class="space-y-3.5">
+        <div>
+          <label class="block text-xs font-semibold text-slate-700 mb-1">Kode / ID Barcode Buku (Opsional)</label>
+          <input type="text" id="add-id" placeholder="Kosongkan untuk generate otomatis (misal: BK-005)" class="w-full px-3.5 py-2 rounded-xl border border-slate-300 text-sm">
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-slate-700 mb-1">Judul Buku *</label>
+          <input type="text" id="add-judul" required class="w-full px-3.5 py-2 rounded-xl border border-slate-300 text-sm">
+        </div>
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs font-semibold text-slate-700 mb-1">Penulis / Pengarang *</label>
+            <input type="text" id="add-penulis" required class="w-full px-3.5 py-2 rounded-xl border border-slate-300 text-sm">
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-700 mb-1">Kategori *</label>
+            <input type="text" id="add-kategori" required placeholder="Fiksi, Pelajaran, Sains..." class="w-full px-3.5 py-2 rounded-xl border border-slate-300 text-sm">
+          </div>
+        </div>
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs font-semibold text-slate-700 mb-1">Tahun Terbit *</label>
+            <input type="number" id="add-tahun" required placeholder="2024" class="w-full px-3.5 py-2 rounded-xl border border-slate-300 text-sm">
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-700 mb-1">Jumlah Stok *</label>
+            <input type="number" id="add-stok" required min="1" value="1" class="w-full px-3.5 py-2 rounded-xl border border-slate-300 text-sm">
+          </div>
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-slate-700 mb-1">URL Gambar Sampul (Opsional)</label>
+          <input type="url" id="add-cover" placeholder="https://..." class="w-full px-3.5 py-2 rounded-xl border border-slate-300 text-sm">
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-slate-700 mb-1">Sinopsis / Deskripsi Singkat</label>
+          <textarea id="add-deskripsi" rows="2" class="w-full px-3.5 py-2 rounded-xl border border-slate-300 text-sm"></textarea>
+        </div>
+
+        <div class="pt-2 flex justify-end gap-2">
+          <button type="button" onclick="closeModal('modal-add-book')" class="px-4 py-2 rounded-xl text-sm font-semibold text-slate-600 hover:bg-slate-100">Batal</button>
+          <button type="submit" id="btn-submit-book" class="px-5 py-2 rounded-xl text-sm font-semibold bg-indigo-600 hover:bg-indigo-700 text-white">Simpan Buku</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal Tampil & Cetak Barcode Buku -->
+  <div id="modal-view-barcode" class="fixed inset-0 z-50 hidden bg-slate-900/50 backdrop-blur-sm flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl max-w-sm w-full p-6 shadow-2xl text-center">
+      <h3 class="text-base font-bold text-slate-900 mb-1">Label Barcode Buku</h3>
+      <p id="barcode-book-title" class="text-xs text-slate-500 mb-4 line-clamp-1">Judul Buku</p>
+      <div class="p-4 border-2 border-dashed border-slate-200 rounded-xl bg-white flex flex-col items-center justify-center mb-4">
+        <svg id="book-barcode-svg"></svg>
+        <span class="text-[10px] font-bold text-slate-400 mt-1">LIBRARY SPENTIGS - SMPN 39 SBY</span>
+      </div>
+      <div class="flex gap-2">
+        <button onclick="closeModal('modal-view-barcode')" class="w-1/2 py-2.5 rounded-xl text-xs font-bold text-slate-600 bg-slate-100 hover:bg-slate-200">Tutup</button>
+        <button onclick="printBarcodeLabel()" class="w-1/2 py-2.5 rounded-xl text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-700 flex items-center justify-center gap-1.5">
+          <i data-lucide="printer" class="w-4 h-4"></i> Cetak Label
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal Kamera Scanner Barcode -->
+  <div id="modal-scanner" class="fixed inset-0 z-50 hidden bg-slate-900/75 backdrop-blur-sm flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl">
+      <div class="flex items-center justify-between mb-3">
+        <h3 class="text-base font-bold text-slate-900 flex items-center gap-2">
+          <i data-lucide="scan-barcode" class="w-5 h-5 text-indigo-600"></i>
+          Pindai Barcode
+        </h3>
+        <button onclick="stopBarcodeScanner()" class="text-slate-400 hover:text-slate-600"><i data-lucide="x" class="w-5 h-5"></i></button>
+      </div>
+      <p class="text-xs text-slate-500 mb-3">Arahkan kamera ke barcode buku atau kartu anggota.</p>
+      <div id="barcode-reader" class="w-full rounded-xl overflow-hidden bg-slate-900 min-h-[240px]"></div>
+      <button onclick="stopBarcodeScanner()" class="mt-4 w-full py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold">
+        Tutup Kamera
+      </button>
+    </div>
+  </div>
+
+  <!-- Modal Konfirmasi Custom -->
+  <div id="modal-confirm" class="fixed inset-0 z-50 hidden bg-slate-900/50 backdrop-blur-sm flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl max-w-sm w-full p-6 shadow-2xl text-center">
+      <div class="w-12 h-12 rounded-full bg-amber-50 text-amber-600 flex items-center justify-center mx-auto mb-3">
+        <i data-lucide="alert-circle" class="w-6 h-6"></i>
+      </div>
+      <h3 id="confirm-title" class="text-lg font-bold text-slate-900">Konfirmasi Tindakan</h3>
+      <p id="confirm-message" class="text-sm text-slate-500 mt-1 mb-6">Apakah Anda yakin?</p>
+      <div class="flex gap-3">
+        <button onclick="closeModal('modal-confirm')" class="w-1/2 py-2.5 rounded-xl text-sm font-semibold text-slate-600 bg-slate-100 hover:bg-slate-200">Batal</button>
+        <button id="confirm-yes-btn" class="w-1/2 py-2.5 rounded-xl text-sm font-semibold text-white bg-indigo-600 hover:bg-indigo-700">Ya, Lanjutkan</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal Import Akun Excel / CSV -->
+  <div id="modal-import-accounts" class="fixed inset-0 z-50 hidden bg-slate-900/50 backdrop-blur-sm flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl max-w-2xl w-full p-6 shadow-2xl max-h-[90vh] overflow-y-auto space-y-4">
+      <div class="flex items-center justify-between pb-3 border-b border-slate-100">
+        <div>
+          <h3 class="text-lg font-bold text-slate-900">Import Akun Siswa & Guru (Excel / CSV)</h3>
+          <p class="text-xs text-slate-500 mt-0.5">Unggah file hasil pengisian template Excel Siswa atau Guru untuk mendaftarkan akun secara massal.</p>
+        </div>
+        <button onclick="closeModal('modal-import-accounts')" class="text-slate-400 hover:text-slate-600">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+
+      <div class="flex flex-wrap items-center justify-between gap-2 bg-slate-50 p-3.5 rounded-xl border border-slate-200">
+        <div class="text-xs text-slate-600">
+          <span class="font-bold text-slate-800">Belum punya template?</span> Unduh template resmi terlebih dahulu:
+        </div>
+        <div class="flex items-center gap-2">
+          <button type="button" onclick="downloadAccountTemplate('SISWA')" class="px-3 py-1.5 bg-sky-100 hover:bg-sky-200 text-sky-800 text-xs font-bold rounded-lg transition-colors">
+            Template Siswa
+          </button>
+          <button type="button" onclick="downloadAccountTemplate('GURU')" class="px-3 py-1.5 bg-violet-100 hover:bg-violet-200 text-violet-800 text-xs font-bold rounded-lg transition-colors">
+            Template Guru
+          </button>
+        </div>
+      </div>
+
+      <div>
+        <label class="block text-xs font-bold text-slate-700 mb-1.5">Pilih File Excel (.xlsx, .xls) atau CSV *</label>
+        <input type="file" id="import-account-file" accept=".xlsx,.xls,.csv" onchange="handleAccountFileSelect(event)"
+          class="w-full text-xs text-slate-600 file:mr-4 file:py-2.5 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100 border border-slate-300 rounded-xl p-1.5 cursor-pointer">
+      </div>
+
+      <div id="import-preview-container" class="hidden space-y-2">
+        <div class="flex items-center justify-between">
+          <span class="text-xs font-bold text-slate-700">Pratinjau Data Siap Import: <span id="import-preview-count" class="text-indigo-600">0</span> akun</span>
+          <span class="text-[11px] text-slate-400">Kolom: Username/NIS, Nama, Role, Kelas/Jabatan, Password</span>
+        </div>
+        <div class="max-h-52 overflow-y-auto border border-slate-200 rounded-xl">
+          <table class="w-full text-left border-collapse text-xs">
+            <thead>
+              <tr class="bg-slate-50 border-b border-slate-200 text-slate-500 uppercase">
+                <th class="py-2 px-3">NIS/NIP</th>
+                <th class="py-2 px-3">Nama</th>
+                <th class="py-2 px-3">Role</th>
+                <th class="py-2 px-3">Kelas/Jabatan</th>
+                <th class="py-2 px-3">Password</th>
+              </tr>
+            </thead>
+            <tbody id="import-preview-tbody" class="divide-y divide-slate-100"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="pt-2 flex items-center justify-end gap-2">
+        <button type="button" onclick="closeModal('modal-import-accounts')" class="px-4 py-2 rounded-xl text-sm font-semibold text-slate-600 hover:bg-slate-100">Batal</button>
+        <button type="button" id="btn-process-import-accounts" onclick="submitImportAccounts()" disabled
+          class="px-5 py-2 rounded-xl text-sm font-bold bg-indigo-600 hover:bg-indigo-700 disabled:bg-slate-300 disabled:cursor-not-allowed text-white flex items-center gap-2">
+          <i data-lucide="check-circle" class="w-4 h-4"></i>
+          Proses Import Akun
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================== JAVASCRIPT LOGIC ==================== -->
+  <script>
+    let appState = {
+      books: [],
+      loans: [],
+      users: [],
+      requests: [],
+      currentUser: null,
+      adminSubTab: 'overview',
+      currentTab: 'katalog'
+    };
+
+    let parsedImportAccounts = [];
+    let categoryChartInstance = null;
+    let loanChartInstance = null;
+    let html5QrcodeScanner = null;
+    let currentScanTarget = 'katalog';
+
+    document.addEventListener('DOMContentLoaded', () => {
+      if (typeof lucide !== 'undefined') lucide.createIcons();
+      fetchData(true);
+    });
+
+    function fetchData(showOverlay = true) {
+      const overlay = document.getElementById('loading-overlay');
+      if (showOverlay && overlay) overlay.classList.remove('hidden');
+
+      if (typeof google !== 'undefined' && google.script && google.script.run) {
+        google.script.run
+          .withSuccessHandler((res) => {
+            if (overlay) overlay.classList.add('hidden');
+            if (res && res.status === 'success') {
+              appState.books = res.books || [];
+              appState.loans = res.loans || [];
+              appState.users = res.users || [];
+              appState.requests = res.requests || [];
+              renderAll();
+              switchTab(appState.currentTab);
+            } else {
+              loadPreviewFallbackData();
+              showToast((res && res.message) || 'Memuat data lokal.', 'info');
+            }
+          })
+          .withFailureHandler((err) => {
+            if (overlay) overlay.classList.add('hidden');
+            loadPreviewFallbackData();
+            showToast('Gagal memuat dari server: ' + err.message, 'error');
+          })
+          .getInitialData();
+      } else {
+        setTimeout(() => {
+          if (overlay) overlay.classList.add('hidden');
+          loadPreviewFallbackData();
+        }, 250);
+      }
+    }
+
+    function loadPreviewFallbackData() {
+      if (appState.books.length === 0) {
+        appState.books = [
+          { id: 'BK-001', judul: 'Laskar Pelangi', penulis: 'Andrea Hirata', kategori: 'Fiksi', tahun: '2005', stok: 5, cover: 'https://images.unsplash.com/photo-1544947950-fa07a98d237f?auto=format&fit=crop&q=80&w=400', deskripsi: 'Kisah inspiratif anak-anak Belitung.' },
+          { id: 'BK-002', judul: 'Filosofi Teras', penulis: 'Henry Manampiring', kategori: 'Pengembangan Diri', tahun: '2018', stok: 3, cover: 'https://images.unsplash.com/photo-1512820790803-83ca734da794?auto=format&fit=crop&q=80&w=400', deskripsi: 'Filsafat Stoa untuk ketenangan mental.' },
+          { id: 'BK-003', judul: 'IPA Terpadu SMP Kelas VIII', penulis: 'Tim Kemdikbud', kategori: 'Pelajaran', tahun: '2022', stok: 10, cover: 'https://images.unsplash.com/photo-1532012197267-da84d127e765?auto=format&fit=crop&q=80&w=400', deskripsi: 'Buku paket IPA Kurikulum Merdeka.' }
+        ];
+      }
+      if (appState.users.length === 0) {
+        appState.users = [
+          { username: 'admin', nama: 'Pustakawan Spentigs', role: 'ADMIN', kelas: 'Staf Perpustakaan' },
+          { username: '2026001', nama: 'Ahmad Rizky Pratama', role: 'SISWA', kelas: 'VIII-A' }
+        ];
+      }
+      renderAll();
+      switchTab(appState.currentTab);
+    }
+
+    function switchTab(tabName) {
+      if (tabName === 'admin' && (!appState.currentUser || appState.currentUser.role !== 'ADMIN')) {
+        openLoginModal();
+        return;
+      }
+      if (tabName === 'akun-siswa' && !appState.currentUser) {
+        openLoginModal();
+        return;
+      }
+
+      appState.currentTab = tabName;
+      ['katalog', 'request', 'akun-siswa', 'admin'].forEach(t => {
+        const view = document.getElementById('view-' + t);
+        if (view) view.classList.add('hidden');
+        const navBtn = document.getElementById('nav-' + t);
+        if (navBtn) {
+          navBtn.classList.remove('bg-indigo-50', 'text-indigo-700', 'font-bold');
+          navBtn.classList.add('text-slate-600', 'font-semibold');
+        }
+      });
+
+      const activeView = document.getElementById('view-' + tabName);
+      if (activeView) activeView.classList.remove('hidden');
+
+      const activeNav = document.getElementById('nav-' + tabName);
+      if (activeNav) {
+        activeNav.classList.add('bg-indigo-50', 'text-indigo-700', 'font-bold');
+        activeNav.classList.remove('text-slate-600', 'font-semibold');
+      }
+
+      if (tabName === 'akun-siswa') renderStudentAccountView();
+      if (tabName === 'admin') renderAdminAll();
+      if (typeof lucide !== 'undefined') lucide.createIcons();
+    }
+
+    function renderAll() {
+      updateStats();
+      populateCategories();
+      filterBooks();
+      renderPublicRequests();
+      if (appState.currentUser && appState.currentUser.role !== 'ADMIN') {
+        renderStudentAccountView();
+      }
+      if (appState.currentUser && appState.currentUser.role === 'ADMIN') {
+        renderAdminAll();
+      }
+    }
+
+    function switchAdminSubTab(subName) {
+      appState.adminSubTab = subName;
+      ['overview', 'sirkulasi', 'buku', 'siswa', 'requests'].forEach(tab => {
+        const panel = document.getElementById('admin-panel-' + tab);
+        const btn = document.getElementById('subnav-' + tab);
+        if (panel) panel.classList.add('hidden');
+        if (btn) {
+          btn.classList.remove('bg-slate-900', 'text-white');
+          btn.classList.add('bg-white', 'text-slate-600', 'border', 'border-slate-200');
+        }
+      });
+
+      const activePanel = document.getElementById('admin-panel-' + subName);
+      const activeBtn = document.getElementById('subnav-' + subName);
+      if (activePanel) activePanel.classList.remove('hidden');
+      if (activeBtn) {
+        activeBtn.classList.add('bg-slate-900', 'text-white');
+        activeBtn.classList.remove('bg-white', 'text-slate-600', 'border', 'border-slate-200');
+      }
+
+      if (subName === 'overview') renderCharts();
+      if (typeof lucide !== 'undefined') lucide.createIcons();
+    }
+
+    // ==================== TEMPLATE EXCEL & IMPORT AKUN SISWA/GURU ====================
+    function downloadAccountTemplate(type) {
+      if (typeof XLSX === 'undefined') {
+        showToast('Pustaka Excel belum termuat. Coba segarkan halaman.', 'error');
+        return;
+      }
+
+      const isGuru = String(type).toUpperCase() === 'GURU';
+      const rows = isGuru
+        ? [
+            { 'NIP / Username': '198504122010011005', 'Nama Lengkap': 'Bapak Hendra Wijaya, S.Pd.', 'Role': 'GURU', 'Kelas / Jabatan': 'Guru Matematika', 'Password': 'guru123' },
+            { 'NIP / Username': '199008172015022002', 'Nama Lengkap': 'Ibu Ratna Kusuma, M.Pd.', 'Role': 'GURU', 'Kelas / Jabatan': 'Guru Bahasa Indonesia', 'Password': 'guru123' }
+          ]
+        : [
+            { 'NIS / Username': '2026011', 'Nama Lengkap': 'Nadia Putri Maharani', 'Role': 'SISWA', 'Kelas / Jabatan': 'VII-A', 'Password': 'siswa123' },
+            { 'NIS / Username': '2026012', 'Nama Lengkap': 'Raka Aditya Pratama', 'Role': 'SISWA', 'Kelas / Jabatan': 'VII-B', 'Password': 'siswa123' }
+          ];
+
+      const worksheet = XLSX.utils.json_to_sheet(rows);
+      worksheet['!cols'] = [{ wch: 22 }, { wch: 30 }, { wch: 12 }, { wch: 22 }, { wch: 16 }];
+      const workbook = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(workbook, worksheet, isGuru ? 'Template_Guru' : 'Template_Siswa');
+      const filename = isGuru ? 'Template_Akun_Guru_Library_Spentigs.xlsx' : 'Template_Akun_Siswa_Library_Spentigs.xlsx';
+      XLSX.writeFile(workbook, filename);
+      showToast(`Template ${isGuru ? 'Guru' : 'Siswa'} berhasil diunduh!`, 'success');
+    }
+
+    function openImportAccountsModal() {
+      parsedImportAccounts = [];
+      const fileInput = document.getElementById('import-account-file');
+      if (fileInput) fileInput.value = '';
+      document.getElementById('import-preview-container').classList.add('hidden');
+      document.getElementById('btn-process-import-accounts').disabled = true;
+      document.getElementById('modal-import-accounts').classList.remove('hidden');
+      if (typeof lucide !== 'undefined') lucide.createIcons();
+    }
+
+    function handleAccountFileSelect(event) {
+      const file = event.target.files && event.target.files[0];
+      if (!file || typeof XLSX === 'undefined') return;
+
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        try {
+          const data = new Uint8Array(e.target.result);
+          const workbook = XLSX.read(data, { type: 'array' });
+          const worksheet = workbook.Sheets[workbook.SheetNames[0]];
+          const jsonRows = XLSX.utils.sheet_to_json(worksheet, { defval: '' });
+
+          const normalized = [];
+          jsonRows.forEach(row => {
+            const keys = Object.keys(row);
+            const findVal = (patterns) => {
+              for (const p of patterns) {
+                const matchKey = keys.find(k => k.toLowerCase().replace(/[^a-z0-9]/g, '').includes(p));
+                if (matchKey && String(row[matchKey]).trim() !== '') return String(row[matchKey]).trim();
+              }
+              return '';
+            };
+
+            const username = findVal(['nis', 'nip', 'username', 'id']);
+            const nama = findVal(['nama', 'name', 'lengkap']);
+            let role = findVal(['role', 'peran', 'status']).toUpperCase();
+            if (!role) role = file.name.toLowerCase().includes('guru') ? 'GURU' : 'SISWA';
+            if (role.includes('GURU')) role = 'GURU';
+            else if (role.includes('SISWA')) role = 'SISWA';
+
+            const kelas = findVal(['kelas', 'jabatan', 'mapel', 'unit']) || (role === 'GURU' ? 'Guru' : 'Siswa');
+            const password = findVal(['password', 'pass', 'sandi']) || 'spentigs123';
+
+            if (username && nama) normalized.push({ username, nama, role, kelas, password });
+          });
+
+          parsedImportAccounts = normalized;
+          renderImportPreview();
+        } catch (err) {
+          showToast('Gagal membaca file: ' + err.message, 'error');
+        }
+      };
+      reader.readAsArrayBuffer(file);
+    }
+
+    function renderImportPreview() {
+      const container = document.getElementById('import-preview-container');
+      const tbody = document.getElementById('import-preview-tbody');
+      const countEl = document.getElementById('import-preview-count');
+      const btn = document.getElementById('btn-process-import-accounts');
+
+      countEl.textContent = parsedImportAccounts.length;
+      if (parsedImportAccounts.length === 0) {
+        container.classList.add('hidden');
+        btn.disabled = true;
+        showToast('Tidak ditemukan baris data valid (pastikan kolom NIS/NIP dan Nama terisi).', 'error');
+        return;
+      }
+
+      tbody.innerHTML = parsedImportAccounts.map(acc => `
+        <tr>
+          <td class="py-2 px-3 font-mono">${acc.username}</td>
+          <td class="py-2 px-3 font-semibold text-slate-800">${acc.nama}</td>
+          <td class="py-2 px-3"><span class="px-2 py-0.5 rounded bg-slate-100 font-bold text-[10px]">${acc.role}</span></td>
+          <td class="py-2 px-3 text-slate-600">${acc.kelas}</td>
+          <td class="py-2 px-3 font-mono text-slate-500">${acc.password}</td>
+        </tr>
+      `).join('');
+
+      container.classList.remove('hidden');
+      btn.disabled = false;
+    }
+
+    function submitImportAccounts() {
+      if (!parsedImportAccounts.length) return;
+      const btn = document.getElementById('btn-process-import-accounts');
+      btn.disabled = true;
+      btn.textContent = 'Mengimpor...';
+
+      if (typeof google !== 'undefined' && google.script && google.script.run) {
+        google.script.run
+          .withSuccessHandler((res) => {
+            btn.disabled = false;
+            btn.innerHTML = '<i data-lucide="check-circle" class="w-4 h-4"></i> Proses Import Akun';
+            if (typeof lucide !== 'undefined') lucide.createIcons();
+            if (res && res.status === 'success') {
+              closeModal('modal-import-accounts');
+              showToast(res.message, 'success');
+              fetchData(false);
+            } else {
+              showToast((res && res.message) || 'Gagal mengimpor akun.', 'error');
+            }
+          })
+          .withFailureHandler((err) => {
+            btn.disabled = false;
+            btn.textContent = 'Proses Import Akun';
+            showToast('Error: ' + err.message, 'error');
+          })
+          .importUsersBulk(parsedImportAccounts);
+      } else {
+        btn.disabled = false;
+        btn.textContent = 'Proses Import Akun';
+        parsedImportAccounts.forEach(acc => {
+          if (!appState.users.some(u => u.username === acc.username)) {
+            appState.users.push({ username: acc.username, nama: acc.nama, role: acc.role, kelas: acc.kelas });
+          }
+        });
+        closeModal('modal-import-accounts');
+        showToast(`${parsedImportAccounts.length} akun berhasil diimpor! (Mode Preview)`, 'success');
+        renderAdminUsers();
+      }
+    }
+
+    // ==================== EXPORT EXCEL & PDF ====================
+    function exportAdminSection(sectionKey, format) {
+      const dateStamp = new Date().toISOString().slice(0, 10);
+      const datasets = {
+        loans: {
+          title: 'Rekapan Sirkulasi Peminjaman - Library Spentigs',
+          sheetName: 'Sirkulasi',
+          fileBase: `Rekap_Sirkulasi_Spentigs_${dateStamp}`,
+          headers: ['ID Transaksi', 'NIS/NIP', 'Nama Peminjam', 'Kelas/Jabatan', 'Judul Buku', 'Tgl Pinjam', 'Batas Kembali', 'Status'],
+          rows: appState.loans.map(l => [l.id, l.nis, l.nama, l.kelas, l.judulBuku, l.tglPinjam, l.tglKembali, l.status])
+        },
+        books: {
+          title: 'Daftar Koleksi Buku - Library Spentigs',
+          sheetName: 'Koleksi_Buku',
+          fileBase: `Koleksi_Buku_Spentigs_${dateStamp}`,
+          headers: ['ID Buku', 'Judul Buku', 'Penulis', 'Kategori', 'Tahun', 'Stok'],
+          rows: appState.books.map(b => [b.id, b.judul, b.penulis, b.kategori, b.tahun, b.stok])
+        },
+        users: {
+          title: 'Daftar Akun Siswa & Guru - Library Spentigs',
+          sheetName: 'Akun_Pengguna',
+          fileBase: `Akun_Pengguna_Spentigs_${dateStamp}`,
+          headers: ['NIS / NIP / Username', 'Nama Lengkap', 'Role', 'Kelas / Jabatan'],
+          rows: appState.users.map(u => [u.username, u.nama, u.role, u.kelas])
+        },
+        requests: {
+          title: 'Daftar Request Pengadaan Buku - Library Spentigs',
+          sheetName: 'Request_Buku',
+          fileBase: `Request_Pengadaan_Spentigs_${dateStamp}`,
+          headers: ['ID Request', 'Pengusul', 'NIS/Kelas', 'Judul Buku', 'Penulis', 'Kategori', 'Alasan', 'Tanggal', 'Status'],
+          rows: appState.requests.map(r => [r.id, r.pengusul, r.nisKelas, r.judul, r.penulis, r.kategori, r.alasan, r.tanggal, r.status])
+        }
+      };
+
+      if (format === 'excel') {
+        if (typeof XLSX === 'undefined') return showToast('Pustaka Excel belum termuat.', 'error');
+        const wb = XLSX.utils.book_new();
+        const keys = sectionKey === 'all' ? ['loans', 'books', 'users', 'requests'] : [sectionKey];
+        keys.forEach(k => {
+          const item = datasets[k];
+          if (item) XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([item.headers, ...item.rows]), item.sheetName);
+        });
+        const fname = sectionKey === 'all' ? `Laporan_Lengkap_Admin_Spentigs_${dateStamp}.xlsx` : `${datasets[sectionKey].fileBase}.xlsx`;
+        XLSX.writeFile(wb, fname);
+        showToast('Berhasil diexport ke Excel!', 'success');
+      } else if (format === 'pdf') {
+        if (!window.jspdf || !window.jspdf.jsPDF) return showToast('Pustaka PDF belum termuat.', 'error');
+        const { jsPDF } = window.jspdf;
+        const doc = new jsPDF({ orientation: 'landscape' });
+        const keys = sectionKey === 'all' ? ['loans', 'books', 'users', 'requests'] : [sectionKey];
+        keys.forEach((k, idx) => {
+          const item = datasets[k];
+          if (!item) return;
+          if (idx > 0) doc.addPage();
+          doc.setFontSize(14);
+          doc.text(item.title, 14, 16);
+          doc.setFontSize(9);
+          doc.text(`SMPN 39 Surabaya • Dicetak: ${new Date().toLocaleString('id-ID')}`, 14, 22);
+          if (typeof doc.autoTable === 'function') {
+            doc.autoTable({
+              head: [item.headers],
+              body: item.rows,
+              startY: 27,
+              styles: { fontSize: 8, cellPadding: 2.5 },
+              headStyles: { fillColor: [79, 70, 229], textColor: 255, fontStyle: 'bold' }
+            });
+          }
+        });
+        const pdfName = sectionKey === 'all' ? `Laporan_Lengkap_Admin_Spentigs_${dateStamp}.pdf` : `${datasets[sectionKey].fileBase}.pdf`;
+        doc.save(pdfName);
+        showToast('Berhasil diexport ke PDF!', 'success');
+      }
+    }
+
+    function updateStats() {
+      document.getElementById('stat-total-books').textContent = appState.books.length;
+      document.getElementById('stat-available-stock').textContent = appState.books.reduce((s, b) => s + (parseInt(b.stok, 10) || 0), 0);
+      document.getElementById('stat-active-loans').textContent = appState.loans.filter(l => l.status === 'Dipinjam').length;
+      document.getElementById('stat-categories').textContent = new Set(appState.books.map(b => b.kategori)).size;
+    }
+
+    function populateCategories() {
+      const select = document.getElementById('category-filter');
+      const currentVal = select.value;
+      const categories = [...new Set(appState.books.map(b => b.kategori))].filter(Boolean);
+      select.innerHTML = '<option value="ALL" class="text-slate-800 bg-white">Semua Kategori</option>';
+      categories.forEach(cat => {
+        const opt = document.createElement('option');
+        opt.value = cat;
+        opt.textContent = cat;
+        opt.className = 'text-slate-800 bg-white font-semibold';
+        select.appendChild(opt);
+      });
+      if (categories.includes(currentVal)) select.value = currentVal;
+    }
+
+    function filterBooks() {
+      const query = (document.getElementById('search-input')?.value || '').toLowerCase();
+      const category = document.getElementById('category-filter')?.value || 'ALL';
+      const filtered = appState.books.filter(book => {
+        const matchQuery = book.judul.toLowerCase().includes(query) || book.penulis.toLowerCase().includes(query) || book.id.toLowerCase().includes(query);
+        const matchCat = category === 'ALL' || book.kategori === category;
+        return matchQuery && matchCat;
+      });
+
+      const grid = document.getElementById('books-grid');
+      const emptyState = document.getElementById('empty-books');
+      document.getElementById('book-count-label').textContent = `Menampilkan ${filtered.length} buku`;
+
+      if (filtered.length === 0) {
+        grid.innerHTML = '';
+        emptyState.classList.remove('hidden');
+        return;
+      }
+
+      emptyState.classList.add('hidden');
+      grid.innerHTML = filtered.map(book => {
+        const stokNum = parseInt(book.stok, 10) || 0;
+        const isAvailable = stokNum > 0;
+        return `
+          <div class="book-card bg-white rounded-2xl border border-slate-200/90 overflow-hidden flex flex-col justify-between">
+            <div>
+              <div class="relative h-52 bg-slate-100 overflow-hidden">
+                <img src="${book.cover}" alt="${book.judul}" class="w-full h-full object-cover" onerror="this.src='https://images.unsplash.com/photo-1543002588-bfa74002ed7e?auto=format&fit=crop&q=80&w=400'">
+                <span class="absolute top-3 left-3 px-2.5 py-1 rounded-lg bg-white/95 text-slate-800 text-[11px] font-bold shadow-sm">${book.kategori}</span>
+                <span class="absolute top-3 right-3 px-2.5 py-1 rounded-lg text-[11px] font-bold shadow-sm ${isAvailable ? 'bg-emerald-500 text-white' : 'bg-rose-500 text-white'}">
+                  ${isAvailable ? `Stok: ${stokNum}` : 'Habis'}
+                </span>
+              </div>
+              <div class="p-5">
+                <div class="flex items-center justify-between text-[11px] font-mono text-slate-400 mb-1">
+                  <span>${book.id}</span>
+                  <span>${book.tahun}</span>
+                </div>
+                <h4 class="font-bold text-base text-slate-900 line-clamp-1 mb-1">${book.judul}</h4>
+                <p class="text-xs font-medium text-indigo-600 mb-2">${book.penulis}</p>
+                <p class="text-xs text-slate-500 line-clamp-2 leading-relaxed">${book.deskripsi}</p>
+              </div>
+            </div>
+            <div class="px-5 pb-5 pt-2 flex gap-2">
+              <button onclick="openBorrowModal('${book.id}')" ${!isAvailable ? 'disabled' : ''}
+                class="flex-grow py-2.5 px-3 rounded-xl text-xs font-bold transition-colors flex items-center justify-center gap-1.5 ${isAvailable ? 'bg-indigo-50 text-indigo-700 hover:bg-indigo-600 hover:text-white' : 'bg-slate-100 text-slate-400 cursor-not-allowed'}">
+                <i data-lucide="${isAvailable ? 'book-open' : 'x-circle'}" class="w-4 h-4"></i>
+                ${isAvailable ? 'Pinjam Buku' : 'Stok Habis'}
+              </button>
+              <button onclick="openBarcodeModal('${book.id}', '${book.judul.replace(/'/g, "\\'")}')" title="Lihat Barcode"
+                class="p-2.5 rounded-xl bg-slate-100 text-slate-600 hover:bg-slate-200 transition-colors">
+                <i data-lucide="qr-code" class="w-4 h-4"></i>
+              </button>
+            </div>
+          </div>
+        `;
+      }).join('');
+      if (typeof lucide !== 'undefined') lucide.createIcons();
+    }
+
+    function handleAuthButtonClick() {
+      if (appState.currentUser) {
+        appState.currentUser = null;
+        document.getElementById('nav-akun-siswa').classList.add('hidden');
+        document.getElementById('nav-admin').classList.add('hidden');
+        document.getElementById('auth-nav-text').textContent = 'Login';
+        document.getElementById('auth-nav-icon').setAttribute('data-lucide', 'log-in');
+        document.getElementById('btn-auth-nav').className = 'px-3.5 py-2 rounded-xl text-xs sm:text-sm font-bold bg-indigo-600 hover:bg-indigo-700 text-white transition-colors flex items-center gap-1.5 shadow-sm';
+        switchTab('katalog');
+        showToast('Anda telah keluar dari akun.', 'info');
+      } else {
+        openLoginModal();
+      }
+    }
+
+    function openLoginModal() {
+      document.getElementById('login-username').value = '';
+      document.getElementById('login-password').value = '';
+      document.getElementById('modal-login').classList.remove('hidden');
+    }
+
+    function submitLogin(e) {
+      e.preventDefault();
+      const username = document.getElementById('login-username').value.trim();
+      const password = document.getElementById('login-password').value.trim();
+      const btn = document.getElementById('btn-submit-login');
+      btn.disabled = true;
+      btn.textContent = 'Memeriksa...';
+
+      if (typeof google !== 'undefined' && google.script && google.script.run) {
+        google.script.run
+          .withSuccessHandler((res) => {
+            btn.disabled = false;
+            btn.textContent = 'Masuk';
+            if (res && res.status === 'success') onLoginSuccess(res.user);
+            else showToast((res && res.message) || 'Login gagal!', 'error');
+          })
+          .withFailureHandler((err) => {
+            btn.disabled = false;
+            btn.textContent = 'Masuk';
+            showToast('Error: ' + err.message, 'error');
+          })
+          .loginUser(username, password);
+      } else {
+        btn.disabled = false;
+        btn.textContent = 'Masuk';
+        if (username === 'admin' && password === 'admin123') {
+          onLoginSuccess({ username: 'admin', nama: 'Pustakawan Spentigs', role: 'ADMIN', kelas: 'Staf Perpustakaan' });
+        } else if (username === '2026001' && password === 'siswa123') {
+          onLoginSuccess({ username: '2026001', nama: 'Ahmad Rizky Pratama', role: 'SISWA', kelas: 'VIII-A' });
+        } else {
+          showToast('Gunakan admin/admin123 atau 2026001/siswa123', 'error');
+        }
+      }
+    }
+
+    function onLoginSuccess(user) {
+      appState.currentUser = user;
+      closeModal('modal-login');
+      document.getElementById('auth-nav-text').textContent = 'Keluar';
+      document.getElementById('auth-nav-icon').setAttribute('data-lucide', 'log-out');
+      document.getElementById('btn-auth-nav').className = 'px-3.5 py-2 rounded-xl text-xs sm:text-sm font-bold bg-rose-50 hover:bg-rose-100 text-rose-600 border border-rose-200 transition-colors flex items-center gap-1.5';
+
+      if (user.role === 'ADMIN') {
+        document.getElementById('nav-admin').classList.remove('hidden');
+        document.getElementById('nav-akun-siswa').classList.add('hidden');
+        renderAdminAll();
+        switchTab('admin');
+      } else {
+        document.getElementById('nav-akun-siswa').classList.remove('hidden');
+        document.getElementById('nav-admin').classList.add('hidden');
+        document.getElementById('nav-siswa-name').textContent = user.nama.split(' ')[0];
+        document.getElementById('req-pengusul').value = user.nama;
+        document.getElementById('req-niskelas').value = `${user.username} (${user.kelas})`;
+        renderStudentAccountView();
+        switchTab('akun-siswa');
+      }
+      showToast('Selamat datang, ' + user.nama + '!', 'success');
+      if (typeof lucide !== 'undefined') lucide.createIcons();
+    }
+
+    function renderStudentAccountView() {
+      const user = appState.currentUser;
+      if (!user) return;
+      document.getElementById('student-profile-name').textContent = user.nama;
+      document.getElementById('student-profile-meta').textContent = `ID/NIS: ${user.username} • ${user.kelas}`;
+
+      if (typeof JsBarcode !== 'undefined') {
+        JsBarcode("#student-barcode-svg", user.username, {
+          format: "CODE128", lineColor: "#0f172a", width: 2, height: 50, displayValue: true, fontSize: 13
+        });
+      }
+
+      const myLoans = appState.loans.filter(l => String(l.nis).trim() === String(user.username).trim());
+      const tbody = document.getElementById('student-loans-tbody');
+      if (myLoans.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="5" class="py-8 text-center text-slate-400 text-sm">Belum ada riwayat peminjaman buku.</td></tr>`;
+        return;
+      }
+
+      tbody.innerHTML = myLoans.map(loan => {
+        const isBorrowed = loan.status === 'Dipinjam';
+        return `
+          <tr class="hover:bg-slate-50">
+            <td class="py-3.5 px-4 font-mono text-xs text-slate-500">${loan.id}</td>
+            <td class="py-3.5 px-4 font-bold text-slate-800">${loan.judulBuku}</td>
+            <td class="py-3.5 px-4 text-slate-600">${loan.tglPinjam}</td>
+            <td class="py-3.5 px-4 font-semibold text-slate-700">${loan.tglKembali}</td>
+            <td class="py-3.5 px-4">
+              <span class="px-2.5 py-1 rounded-full text-xs font-bold ${isBorrowed ? 'bg-amber-100 text-amber-700' : 'bg-emerald-100 text-emerald-700'}">${loan.status}</span>
+            </td>
+          </tr>
+        `;
+      }).join('');
+    }
+
+    function openBorrowModal(bookId) {
+      const book = appState.books.find(b => b.id === bookId);
+      if (!book) return;
+      document.getElementById('borrow-book-id').value = book.id;
+      document.getElementById('modal-book-cover').src = book.cover;
+      document.getElementById('modal-book-category').textContent = book.kategori;
+      document.getElementById('modal-book-title').textContent = book.judul;
+      document.getElementById('modal-book-author').textContent = `${book.penulis} • Terbit ${book.tahun}`;
+      document.getElementById('modal-book-desc').textContent = book.deskripsi;
+
+      if (!appState.currentUser) {
+        document.getElementById('borrow-login-warning').classList.remove('hidden');
+        document.getElementById('form-borrow').classList.add('hidden');
+      } else {
+        document.getElementById('borrow-login-warning').classList.add('hidden');
+        document.getElementById('form-borrow').classList.remove('hidden');
+        document.getElementById('borrow-display-nama').textContent = appState.currentUser.nama;
+        document.getElementById('borrow-display-niskelas').textContent = `${appState.currentUser.username} (${appState.currentUser.kelas})`;
+      }
+      document.getElementById('modal-borrow').classList.remove('hidden');
+    }
+
+    function submitBorrow(e) {
+      e.preventDefault();
+      if (!appState.currentUser) return;
+      const btn = document.getElementById('btn-submit-borrow');
+      btn.disabled = true;
+      btn.textContent = 'Memproses...';
+
+      executeBorrowTransaction({
+        bookId: document.getElementById('borrow-book-id').value,
+        nis: appState.currentUser.username,
+        nama: appState.currentUser.nama,
+        kelas: appState.currentUser.kelas
+      }, () => {
+        btn.disabled = false;
+        btn.innerHTML = '<i data-lucide="book-check" class="w-4 h-4"></i> Konfirmasi Pinjam';
+        closeModal('modal-borrow');
+      });
+    }
+
+    function openAdminDirectBorrowModal() {
+      document.getElementById('admin-borrow-bookid').value = '';
+      document.getElementById('admin-borrow-nis').value = '';
+      document.getElementById('admin-borrow-nama').value = '';
+      document.getElementById('admin-borrow-kelas').value = '';
+      document.getElementById('modal-admin-borrow').classList.remove('hidden');
+    }
+
+    function autoFillStudentByNis() {
+      const nis = document.getElementById('admin-borrow-nis').value.trim();
+      const found = appState.users.find(u => String(u.username).trim() === nis);
+      if (found) {
+        document.getElementById('admin-borrow-nama').value = found.nama;
+        document.getElementById('admin-borrow-kelas').value = found.kelas;
+      }
+    }
+
+    function submitAdminDirectBorrow(e) {
+      e.preventDefault();
+      const btn = document.getElementById('btn-admin-borrow-submit');
+      btn.disabled = true;
+      btn.textContent = 'Memproses...';
+
+      executeBorrowTransaction({
+        bookId: document.getElementById('admin-borrow-bookid').value.trim(),
+        nis: document.getElementById('admin-borrow-nis').value.trim(),
+        nama: document.getElementById('admin-borrow-nama').value.trim(),
+        kelas: document.getElementById('admin-borrow-kelas').value.trim()
+      }, () => {
+        btn.disabled = false;
+        btn.textContent = 'Proses Pinjam';
+        closeModal('modal-admin-borrow');
+      });
+    }
+
+    function executeBorrowTransaction(payload, onDone) {
+      if (typeof google !== 'undefined' && google.script && google.script.run) {
+        google.script.run
+          .withSuccessHandler((res) => {
+            onDone();
+            if (res && res.status === 'success') {
+              const targetBook = appState.books.find(b => b.id === res.updatedBookId);
+              if (targetBook && typeof res.newStock === 'number') {
+                targetBook.stok = res.newStock;
+                renderAll();
+              }
+              showToast(res.message, 'success');
+              fetchData(false);
+            } else {
+              showToast((res && res.message) || 'Gagal meminjam buku.', 'error');
+            }
+          })
+          .withFailureHandler((err) => {
+            onDone();
+            showToast('Error: ' + err.message, 'error');
+          })
+          .borrowBook(payload);
+      } else {
+        onDone();
+        const b = appState.books.find(x => x.id.toLowerCase() === payload.bookId.toLowerCase());
+        if (b && b.stok > 0) {
+          b.stok -= 1;
+          appState.loans.unshift({
+            id: 'TRX-PRE-' + Math.floor(Math.random() * 900),
+            nis: payload.nis, nama: payload.nama, kelas: payload.kelas,
+            bookId: b.id, judulBuku: b.judul, tglPinjam: '2026-11-22', tglKembali: '2026-11-29', status: 'Dipinjam'
+          });
+          showToast('Peminjaman berhasil! (Mode Preview)', 'success');
+          renderAll();
+        } else {
+          showToast('ID Buku tidak ditemukan atau stok habis.', 'error');
+        }
+      }
+    }
+
+    function renderPublicRequests() {
+      const tbody = document.getElementById('public-requests-tbody');
+      if (!appState.requests.length) {
+        tbody.innerHTML = `<tr><td colspan="4" class="py-8 text-center text-slate-400 text-sm">Belum ada usulan pengadaan buku.</td></tr>`;
+        return;
+      }
+      tbody.innerHTML = appState.requests.map(r => {
+        let badgeClass = 'bg-amber-100 text-amber-700';
+        if (r.status === 'Disetujui') badgeClass = 'bg-emerald-100 text-emerald-700';
+        if (r.status === 'Ditolak') badgeClass = 'bg-rose-100 text-rose-700';
+        return `
+          <tr class="hover:bg-slate-50">
+            <td class="py-3.5 px-4 text-xs text-slate-500">${r.tanggal}</td>
+            <td class="py-3.5 px-4">
+              <p class="font-bold text-slate-800">${r.judul}</p>
+              <p class="text-xs text-slate-500">${r.penulis} • ${r.kategori}</p>
+            </td>
+            <td class="py-3.5 px-4 text-xs text-slate-600">${r.pengusul}<br><span class="text-slate-400">${r.nisKelas}</span></td>
+            <td class="py-3.5 px-4"><span class="px-2.5 py-1 rounded-full text-xs font-bold ${badgeClass}">${r.status}</span></td>
+          </tr>
+        `;
+      }).join('');
+    }
+
+    function handleBookRequestSubmit(e) {
+      e.preventDefault();
+      const btn = document.getElementById('btn-submit-req');
+      btn.disabled = true;
+      btn.textContent = 'Mengirim...';
+
+      const reqObj = {
+        pengusul: document.getElementById('req-pengusul').value.trim(),
+        nisKelas: document.getElementById('req-niskelas').value.trim(),
+        judul: document.getElementById('req-judul').value.trim(),
+        penulis: document.getElementById('req-penulis').value.trim(),
+        kategori: document.getElementById('req-kategori').value.trim(),
+        alasan: document.getElementById('req-alasan').value.trim()
+      };
+
+      if (typeof google !== 'undefined' && google.script && google.script.run) {
+        google.script.run
+          .withSuccessHandler((res) => {
+            btn.disabled = false;
+            btn.innerHTML = '<i data-lucide="send" class="w-4 h-4"></i> Kirim Usulan Buku';
+            if (res && res.status === 'success') {
+              document.getElementById('form-request-book').reset();
+              showToast(res.message, 'success');
+              fetchData(false);
+            } else {
+              showToast((res && res.message) || 'Gagal mengirim usulan.', 'error');
+            }
+          })
+          .withFailureHandler((err) => {
+            btn.disabled = false;
+            btn.textContent = 'Kirim Usulan Buku';
+            showToast('Error: ' + err.message, 'error');
+          })
+          .submitBookRequest(reqObj);
+      } else {
+        btn.disabled = false;
+        btn.textContent = 'Kirim Usulan Buku';
+        appState.requests.unshift({ id: 'REQ-' + Math.floor(Math.random() * 900), ...reqObj, tanggal: '2026-11-22', status: 'Menunggu' });
+        document.getElementById('form-request-book').reset();
+        showToast('Usulan buku terkirim! (Mode Preview)', 'success');
+        renderAll();
+      }
+    }
+
+    function renderAdminAll() {
+      renderAdminRecap();
+      renderAdminLoans();
+      renderAdminBooks();
+      renderAdminUsers();
+      renderAdminRequests();
+      if (appState.adminSubTab === 'overview') renderCharts();
+    }
+
+    function renderCharts() {
+      const ctxCat = document.getElementById('chart-categories');
+      const ctxLoan = document.getElementById('chart-loans');
+      if (!ctxCat || !ctxLoan || typeof Chart === 'undefined') return;
+
+      const catCounts = {};
+      appState.books.forEach(b => { catCounts[b.kategori] = (catCounts[b.kategori] || 0) + 1; });
+
+      if (categoryChartInstance) categoryChartInstance.destroy();
+      categoryChartInstance = new Chart(ctxCat, {
+        type: 'bar',
+        data: {
+          labels: Object.keys(catCounts),
+          datasets: [{ label: 'Jumlah Judul Buku', data: Object.values(catCounts), backgroundColor: '#4f46e5', borderRadius: 8 }]
+        },
+        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } } } }
+      });
+
+      const dipinjamCount = appState.loans.filter(l => l.status === 'Dipinjam').length;
+      const kembaliCount = appState.loans.filter(l => l.status === 'Dikembalikan').length;
+
+      if (loanChartInstance) loanChartInstance.destroy();
+      loanChartInstance = new Chart(ctxLoan, {
+        type: 'doughnut',
+        data: {
+          labels: ['Sedang Dipinjam', 'Sudah Dikembalikan'],
+          datasets: [{ data: [dipinjamCount, kembaliCount], backgroundColor: ['#f59e0b', '#10b981'], borderWidth: 0 }]
+        },
+        options: { responsive: true, maintainAspectRatio: false, cutout: '65%' }
+      });
+    }
+
+    function renderAdminRecap() {
+      const tbody = document.getElementById('admin-recap-tbody');
+      const recent = appState.loans.slice(0, 5);
+      if (!recent.length) {
+        tbody.innerHTML = `<tr><td colspan="5" class="py-6 text-center text-slate-400 text-xs">Belum ada rekapan transaksi.</td></tr>`;
+        return;
+      }
+      tbody.innerHTML = recent.map(l => `
+        <tr>
+          <td class="py-3 px-4 font-mono text-xs text-slate-500">${l.id}</td>
+          <td class="py-3 px-4 font-semibold text-slate-800">${l.nama} <span class="text-xs text-slate-400">(${l.kelas})</span></td>
+          <td class="py-3 px-4 text-slate-700">${l.judulBuku}</td>
+          <td class="py-3 px-4 text-xs text-slate-500">${l.tglPinjam}</td>
+          <td class="py-3 px-4"><span class="px-2 py-0.5 rounded-full text-[11px] font-bold ${l.status === 'Dipinjam' ? 'bg-amber-100 text-amber-700' : 'bg-emerald-100 text-emerald-700'}">${l.status}</span></td>
+        </tr>
+      `).join('');
+    }
+
+    function renderAdminLoans() {
+      const q = (document.getElementById('admin-search-loan')?.value || '').toLowerCase();
+      const filtered = appState.loans.filter(l => l.nama.toLowerCase().includes(q) || l.nis.toLowerCase().includes(q) || l.judulBuku.toLowerCase().includes(q));
+      const tbody = document.getElementById('admin-loans-tbody');
+      if (!filtered.length) {
+        tbody.innerHTML = `<tr><td colspan="6" class="py-6 text-center text-slate-400 text-xs">Tidak ada data transaksi.</td></tr>`;
+        return;
+      }
+      tbody.innerHTML = filtered.map(loan => {
+        const isBorrowed = loan.status === 'Dipinjam';
+        const safeTitle = loan.judulBuku.replace(/'/g, "\\'");
+        return `
+          <tr class="hover:bg-slate-50">
+            <td class="py-3 px-3 text-xs"><p class="font-mono text-slate-500">${loan.id}</p><p class="text-[11px] text-slate-400">${loan.tglPinjam}</p></td>
+            <td class="py-3 px-3 text-xs"><p class="font-bold text-slate-800">${loan.nama}</p><p class="text-slate-400">${loan.nis} • ${loan.kelas}</p></td>
+            <td class="py-3 px-3 text-xs font-semibold text-slate-700">${loan.judulBuku}</td>
+            <td class="py-3 px-3 text-xs text-slate-600">${loan.tglKembali}</td>
+            <td class="py-3 px-3"><span class="px-2 py-0.5 rounded-full text-[11px] font-bold ${isBorrowed ? 'bg-amber-100 text-amber-700' : 'bg-emerald-100 text-emerald-700'}">${loan.status}</span></td>
+            <td class="py-3 px-3 text-right">
+              ${isBorrowed ? `<button onclick="confirmReturnBook('${loan.id}', '${safeTitle}')" class="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-lg">Konfirmasi Kembali</button>` : `<span class="text-xs text-slate-400">Selesai</span>`}
+            </td>
+          </tr>
+        `;
+      }).join('');
+    }
+
+    function renderAdminBooks() {
+      const tbody = document.getElementById('admin-books-tbody');
+      tbody.innerHTML = appState.books.map(b => {
+        const safeTitle = b.judul.replace(/'/g, "\\'");
+        return `
+          <tr class="hover:bg-slate-50">
+            <td class="py-3 px-4 font-mono text-xs font-bold text-indigo-600">${b.id}</td>
+            <td class="py-3 px-4"><p class="font-bold text-slate-800 text-xs">${b.judul}</p><p class="text-[11px] text-slate-500">${b.penulis} (${b.tahun})</p></td>
+            <td class="py-3 px-4 text-xs text-slate-600">${b.kategori}</td>
+            <td class="py-3 px-4 text-xs font-bold text-slate-800">${b.stok}</td>
+            <td class="py-3 px-4 text-right flex justify-end gap-2">
+              <button onclick="openBarcodeModal('${b.id}', '${safeTitle}')" class="px-2.5 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-lg flex items-center gap-1"><i data-lucide="qr-code" class="w-3.5 h-3.5"></i> Barcode</button>
+              <button onclick="confirmDeleteBook('${b.id}', '${safeTitle}')" class="p-1.5 text-rose-600 hover:bg-rose-50 rounded-lg"><i data-lucide="trash-2" class="w-4 h-4"></i></button>
+            </td>
+          </tr>
+        `;
+      }).join('');
+      if (typeof lucide !== 'undefined') lucide.createIcons();
+    }
+
+    function renderAdminUsers() {
+      const tbody = document.getElementById('admin-users-tbody');
+      tbody.innerHTML = appState.users.map(u => {
+        const badgeStyle = u.role === 'ADMIN' ? 'bg-indigo-100 text-indigo-700' : (u.role === 'GURU' ? 'bg-violet-100 text-violet-700' : 'bg-emerald-100 text-emerald-700');
+        return `
+          <tr class="hover:bg-slate-50">
+            <td class="py-3 px-4 font-mono text-xs font-bold text-slate-800">${u.username}</td>
+            <td class="py-3 px-4 text-xs font-semibold text-slate-800">${u.nama}</td>
+            <td class="py-3 px-4 text-xs text-slate-600">${u.kelas}</td>
+            <td class="py-3 px-4"><span class="px-2 py-0.5 rounded-md text-[10px] font-bold ${badgeStyle}">${u.role}</span></td>
+            <td class="py-3 px-4 text-right">
+              ${u.username.toLowerCase() !== 'admin' ? `<button onclick="confirmDeleteUser('${u.username}', '${u.nama.replace(/'/g, "\\'")}')" class="p-1.5 text-rose-500 hover:bg-rose-50 rounded-lg"><i data-lucide="trash-2" class="w-4 h-4"></i></button>` : '<span class="text-[11px] text-slate-400">Utama</span>'}
+            </td>
+          </tr>
+        `;
+      }).join('');
+      if (typeof lucide !== 'undefined') lucide.createIcons();
+    }
+
+    function renderAdminRequests() {
+      const pendingCount = appState.requests.filter(r => r.status === 'Menunggu').length;
+      const badge = document.getElementById('badge-pending-req');
+      if (pendingCount > 0) { badge.textContent = pendingCount; badge.classList.remove('hidden'); }
+      else { badge.classList.add('hidden'); }
+
+      const tbody = document.getElementById('admin-requests-tbody');
+      if (!appState.requests.length) {
+        tbody.innerHTML = `<tr><td colspan="5" class="py-6 text-center text-slate-400 text-xs">Belum ada usulan pengadaan buku.</td></tr>`;
+        return;
+      }
+
+      tbody.innerHTML = appState.requests.map(r => {
+        let badgeClass = 'bg-amber-100 text-amber-700';
+        if (r.status === 'Disetujui') badgeClass = 'bg-emerald-100 text-emerald-700';
+        if (r.status === 'Ditolak') badgeClass = 'bg-rose-100 text-rose-700';
+        return `
+          <tr class="hover:bg-slate-50">
+            <td class="py-3 px-4 text-xs"><p class="font-bold text-slate-800">${r.pengusul}</p><p class="text-slate-400">${r.nisKelas} • ${r.tanggal}</p></td>
+            <td class="py-3 px-4 text-xs"><p class="font-bold text-slate-800">${r.judul}</p><p class="text-slate-500">${r.penulis} (${r.kategori})</p></td>
+            <td class="py-3 px-4 text-xs text-slate-600 max-w-xs">${r.alasan}</td>
+            <td class="py-3 px-4"><span class="px-2.5 py-0.5 rounded-full text-[11px] font-bold ${badgeClass}">${r.status}</span></td>
+            <td class="py-3 px-4 text-right space-x-1">
+              <button onclick="changeRequestStatus('${r.id}', 'Disetujui')" class="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-700 text-white text-[11px] font-bold rounded-lg">Setujui</button>
+              <button onclick="changeRequestStatus('${r.id}', 'Ditolak')" class="px-2.5 py-1 bg-rose-100 hover:bg-rose-200 text-rose-700 text-[11px] font-bold rounded-lg">Tolak</button>
+            </td>
+          </tr>
+        `;
+      }).join('');
+    }
+
+    function submitAddUser(e) {
+      e.preventDefault();
+      const btn = document.getElementById('btn-submit-user');
+      btn.disabled = true;
+      btn.textContent = 'Menyimpan...';
+
+      const userObj = {
+        username: document.getElementById('user-nis').value.trim(),
+        password: document.getElementById('user-pass').value.trim(),
+        nama: document.getElementById('user-nama').value.trim(),
+        kelas: document.getElementById('user-kelas').value.trim(),
+        role: document.getElementById('user-role').value
+      };
+
+      if (typeof google !== 'undefined' && google.script && google.script.run) {
+        google.script.run
+          .withSuccessHandler((res) => {
+            btn.disabled = false;
+            btn.textContent = 'Daftarkan Akun';
+            if (res && res.status === 'success') {
+              document.getElementById('form-add-user').reset();
+              document.getElementById('user-pass').value = 'spentigs123';
+              showToast(res.message, 'success');
+              fetchData(false);
+            } else {
+              showToast((res && res.message) || 'Gagal menambah akun.', 'error');
+            }
+          })
+          .withFailureHandler((err) => {
+            btn.disabled = false;
+            btn.textContent = 'Daftarkan Akun';
+            showToast('Error: ' + err.message, 'error');
+          })
+          .addUserAccount(userObj);
+      } else {
+        btn.disabled = false;
+        btn.textContent = 'Daftarkan Akun';
+        appState.users.push(userObj);
+        document.getElementById('form-add-user').reset();
+        document.getElementById('user-pass').value = 'spentigs123';
+        showToast('Akun ditambahkan! (Mode Preview)', 'success');
+        renderAdminUsers();
+      }
+    }
+
+    function confirmDeleteUser(username, nama) {
+      openConfirmModal('Hapus Akun', `Hapus akun milik "${nama}" (${username})?`, () => {
+        if (typeof google !== 'undefined' && google.script && google.script.run) {
+          google.script.run
+            .withSuccessHandler((res) => {
+              if (res && res.status === 'success') { showToast(res.message, 'success'); fetchData(false); }
+              else showToast(res.message, 'error');
+            })
+            .deleteUserAccount(username);
+        } else {
+          appState.users = appState.users.filter(u => u.username !== username);
+          renderAdminUsers();
+        }
+      });
+    }
+
+    function openAddBookModal() {
+      document.getElementById('form-add-book').reset();
+      document.getElementById('modal-add-book').classList.remove('hidden');
+    }
+
+    function submitAddBook(e) {
+      e.preventDefault();
+      const btn = document.getElementById('btn-submit-book');
+      btn.disabled = true;
+      btn.textContent = 'Menyimpan...';
+
+      const bookObj = {
+        id: document.getElementById('add-id').value.trim(),
+        judul: document.getElementById('add-judul').value.trim(),
+        penulis: document.getElementById('add-penulis').value.trim(),
+        kategori: document.getElementById('add-kategori').value.trim(),
+        tahun: document.getElementById('add-tahun').value.trim(),
+        stok: document.getElementById('add-stok').value,
+        cover: document.getElementById('add-cover').value.trim(),
+        deskripsi: document.getElementById('add-deskripsi').value.trim()
+      };
+
+      if (typeof google !== 'undefined' && google.script && google.script.run) {
+        google.script.run
+          .withSuccessHandler((res) => {
+            btn.disabled = false;
+            btn.textContent = 'Simpan Buku';
+            if (res && res.status === 'success') {
+              closeModal('modal-add-book');
+              showToast(res.message, 'success');
+              fetchData(false);
+            } else {
+              showToast((res && res.message) || 'Gagal menambah buku.', 'error');
+            }
+          })
+          .withFailureHandler((err) => {
+            btn.disabled = false;
+            btn.textContent = 'Simpan Buku';
+            showToast('Error: ' + err.message, 'error');
+          })
+          .addBook(bookObj);
+      } else {
+        btn.disabled = false;
+        btn.textContent = 'Simpan Buku';
+        appState.books.unshift({
+          id: bookObj.id || 'BK-' + Math.floor(Math.random() * 900),
+          ...bookObj, stok: Number(bookObj.stok),
+          cover: bookObj.cover || 'https://images.unsplash.com/photo-1543002588-bfa74002ed7e?auto=format&fit=crop&q=80&w=400'
+        });
+        closeModal('modal-add-book');
+        showToast('Buku ditambahkan! (Mode Preview)', 'success');
+        renderAll();
+      }
+    }
+
+    function confirmReturnBook(loanId, bookTitle) {
+      openConfirmModal('Konfirmasi Pengembalian', `Tandai buku "${bookTitle}" telah dikembalikan?`, () => {
+        if (typeof google !== 'undefined' && google.script && google.script.run) {
+          google.script.run
+            .withSuccessHandler((res) => {
+              if (res && res.status === 'success') { showToast(res.message, 'success'); fetchData(false); }
+              else showToast(res.message, 'error');
+            })
+            .returnBook(loanId);
+        } else {
+          const loan = appState.loans.find(l => l.id === loanId);
+          if (loan) {
+            loan.status = 'Dikembalikan';
+            const b = appState.books.find(x => x.id === loan.bookId);
+            if (b) b.stok += 1;
+            renderAll();
+          }
+        }
+      });
+    }
+
+    function confirmDeleteBook(bookId, bookTitle) {
+      openConfirmModal('Hapus Buku', `Yakin menghapus "${bookTitle}" dari katalog?`, () => {
+        if (typeof google !== 'undefined' && google.script && google.script.run) {
+          google.script.run
+            .withSuccessHandler((res) => {
+              if (res && res.status === 'success') { showToast(res.message, 'success'); fetchData(false); }
+              else showToast(res.message, 'error');
+            })
+            .deleteBook(bookId);
+        } else {
+          appState.books = appState.books.filter(b => b.id !== bookId);
+          renderAll();
+        }
+      });
+    }
+
+    function changeRequestStatus(reqId, newStatus) {
+      if (typeof google !== 'undefined' && google.script && google.script.run) {
+        google.script.run
+          .withSuccessHandler((res) => {
+            if (res && res.status === 'success') { showToast(res.message, 'success'); fetchData(false); }
+          })
+          .updateRequestStatus(reqId, newStatus);
+      } else {
+        const req = appState.requests.find(r => r.id === reqId);
+        if (req) req.status = newStatus;
+        renderAll();
+      }
+    }
+
+    function openBarcodeModal(bookId, bookTitle) {
+      document.getElementById('barcode-book-title').textContent = bookTitle;
+      if (typeof JsBarcode !== 'undefined') {
+        JsBarcode("#book-barcode-svg", bookId, { format: "CODE128", lineColor: "#0f172a", width: 2, height: 60, displayValue: true });
+      }
+      document.getElementById('modal-view-barcode').classList.remove('hidden');
+    }
+
+    function printBarcodeLabel() {
+      const svgContent = document.getElementById('book-barcode-svg').outerHTML;
+      const title = document.getElementById('barcode-book-title').textContent;
+      const win = window.open('', '', 'width=400,height=300');
+      win.document.write(`<html><body style="text-align:center;font-family:sans-serif;padding:20px;"><h4>${title}</h4>${svgContent}<p style="font-size:10px;color:#555;">LIBRARY SPENTIGS - SMPN 39 SURABAYA</p><script>window.print();window.close();<\/script></body></html>`);
+      win.document.close();
+    }
+
+    function openBarcodeScanner(targetMode) {
+      currentScanTarget = targetMode;
+      document.getElementById('modal-scanner').classList.remove('hidden');
+      if (typeof Html5Qrcode === 'undefined') return showToast('Library scanner kamera belum siap.', 'error');
+
+      html5QrcodeScanner = new Html5Qrcode("barcode-reader");
+      html5QrcodeScanner.start(
+        { facingMode: "environment" },
+        { fps: 10, qrbox: { width: 250, height: 150 } },
+        (decodedText) => {
+          stopBarcodeScanner();
+          showToast('Barcode terdeteksi: ' + decodedText, 'success');
+          if (currentScanTarget === 'katalog') {
+            document.getElementById('search-input').value = decodedText;
+            filterBooks();
+          } else if (currentScanTarget === 'admin-book') {
+            document.getElementById('admin-borrow-bookid').value = decodedText;
+          } else if (currentScanTarget === 'admin-student') {
+            document.getElementById('admin-borrow-nis').value = decodedText;
+            autoFillStudentByNis();
+          }
+        },
+        () => {}
+      ).catch(err => showToast('Tidak dapat mengakses kamera: ' + err, 'error'));
+    }
+
+    function stopBarcodeScanner() {
+      if (html5QrcodeScanner) {
+        html5QrcodeScanner.stop().then(() => {
+          html5QrcodeScanner.clear();
+          html5QrcodeScanner = null;
+        }).catch(() => {});
+      }
+      closeModal('modal-scanner');
+    }
+
+    function toggleChatbot() {
+      document.getElementById('chatbot-window').classList.toggle('hidden');
+      if (typeof lucide !== 'undefined') lucide.createIcons();
+    }
+
+    function sendQuickChat(text) {
+      document.getElementById('chat-input').value = text;
+      handleChatSubmit(new Event('submit'));
+    }
+
+    function handleChatSubmit(e) {
+      e.preventDefault();
+      const inputEl = document.getElementById('chat-input');
+      const userMsg = inputEl.value.trim();
+      if (!userMsg) return;
+      appendChatBubble(userMsg, 'user');
+      inputEl.value = '';
+      setTimeout(() => appendChatBubble(generateBotReply(userMsg), 'bot'), 300);
+    }
+
+    function appendChatBubble(htmlText, sender) {
+      const container = document.getElementById('chat-messages');
+      const div = document.createElement('div');
+      div.className = sender === 'user'
+        ? 'bg-indigo-600 text-white p-3 rounded-2xl rounded-tr-none ml-8 shadow-sm leading-relaxed'
+        : 'bg-white text-slate-700 p-3 rounded-2xl rounded-tl-none mr-6 border border-slate-200/80 shadow-sm leading-relaxed';
+      div.innerHTML = htmlText;
+      container.appendChild(div);
+      container.scrollTop = container.scrollHeight;
+    }
+
+    function generateBotReply(query) {
+      const q = query.toLowerCase();
+      const matchedBooks = appState.books.filter(b =>
+        q.includes(b.judul.toLowerCase()) ||
+        b.judul.toLowerCase().split(' ').some(word => word.length > 3 && q.includes(word)) ||
+        q.includes(b.penulis.toLowerCase())
+      );
+      if (matchedBooks.length > 0) {
+        const list = matchedBooks.slice(0, 3).map(b =>
+          `• <b>${b.judul}</b> (${b.penulis}) — ${b.stok > 0 ? `<span class="text-emerald-600 font-bold">Tersedia (${b.stok} eks)</span>` : '<span class="text-rose-600 font-bold">Stok Habis</span>'}`
+        ).join('<br>');
+        return `Koleksi yang cocok di <b>Library Spentigs</b>:<br><br>${list}`;
+      }
+      if (q.includes('jam') || q.includes('buka') || q.includes('jadwal')) {
+        return `<b>Jam Operasional Perpustakaan SMPN 39 Surabaya:</b><br>• Senin – Kamis: 07.00 – 15.00 WIB<br>• Jumat: 07.00 – 11.30 WIB<br>• Sabtu – Minggu: Libur`;
+      }
+      if (q.includes('pinjam') || q.includes('syarat') || q.includes('lama') || q.includes('durasi')) {
+        return `<b>Aturan Peminjaman Library Spentigs:</b><br>1. Login menggunakan akun Anda.<br>2. Pilih buku atau scan barcode buku.<br>3. Durasi peminjaman maksimal <b>7 hari</b>.`;
+      }
+      if (q.includes('39') || q.includes('spentigs') || q.includes('alamat') || q.includes('lokasi') || q.includes('profil')) {
+        return `<b>Library Spentigs</b> adalah perpustakaan digital <b>SMP Negeri 39 Surabaya</b> di Jl. Prapen Panjang Jiwo, Tenggilis Mejoyo, Surabaya.`;
+      }
+      return `Tanyakan judul buku tertentu, <b>jam buka</b>, <b>cara pinjam</b>, atau <b>profil SMPN 39 Surabaya</b>.`;
+    }
+
+    function closeModal(modalId) {
+      document.getElementById(modalId).classList.add('hidden');
+    }
+
+    function openConfirmModal(title, message, onConfirmCallback) {
+      document.getElementById('confirm-title').textContent = title;
+      document.getElementById('confirm-message').textContent = message;
+      const yesBtn = document.getElementById('confirm-yes-btn');
+      const newYesBtn = yesBtn.cloneNode(true);
+      yesBtn.parentNode.replaceChild(newYesBtn, yesBtn);
+      newYesBtn.addEventListener('click', () => {
+        closeModal('modal-confirm');
+        onConfirmCallback();
+      });
+      document.getElementById('modal-confirm').classList.remove('hidden');
+    }
+
+    function showToast(message, type = 'info') {
+      const container = document.getElementById('toast-container');
+      const toast = document.createElement('div');
+      const colors = { success: 'bg-emerald-600 text-white', error: 'bg-rose-600 text-white', info: 'bg-slate-800 text-white' };
+      toast.className = `${colors[type] || colors.info} px-4 py-3 rounded-xl shadow-lg text-xs sm:text-sm font-semibold transform transition-all duration-300 translate-y-2 opacity-0`;
+      toast.innerHTML = `<span>${message}</span>`;
+      container.appendChild(toast);
+      requestAnimationFrame(() => toast.classList.remove('translate-y-2', 'opacity-0'));
+      setTimeout(() => {
+        toast.classList.add('opacity-0', 'translate-y-2');
+        setTimeout(() => toast.remove(), 300);
+      }, 3500);
+    }
+  </script>
+</body>
+</html>
