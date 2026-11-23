@@ -68,4 +68,4 @@ Because this project runs on **Google Sheets + Google Apps Script**, you don't n
 4. **Deploy as a Web App:** Click **Deploy > New deployment**, select **Web app**, set **Execute as** to **Me** and **Who has access** to **Anyone** (or your school/organization scope as needed), and click **Deploy**.
 5. **Open & Test:** Open the generated web app URL in your browser to browse the catalog, test the chatbot and procurement requests, and log in as Admin or a sample student account. *(Whenever you update the code later, create a **New deployment** or update an existing deployment to a **New version** so your changes go live.)*
 
-![Preview Demo Aplikasi](LibrarySystem.mp4)
+[![Watch Demo Video](assets/thumbnail.png)](https://youtu.be/4PeIOT-kzvM)
